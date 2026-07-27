@@ -2359,8 +2359,24 @@ document.getElementById("apiKeySave").addEventListener("click", () => {
   }
   currentKeyIndex = 0;
   omdbLimitReached = false;
+
+  // Earlier "not found" results may actually have been caused by the
+  // previous key hitting its rate limit rather than a genuine no-match.
+  // Clear those out so this new key gets a real shot at them.
+  let clearedAny = false;
+  for (const cacheKey in omdbCache) {
+    if (omdbCache[cacheKey] && omdbCache[cacheKey].Response === "False") {
+      delete omdbCache[cacheKey];
+      clearedAny = true;
+    }
+  }
+  if (clearedAny) saveCache();
+  items.forEach(i => { if (i.notFound) delete i.notFound; });
+  saveItems();
+
   settingsPop.classList.remove("active");
   toast(t("apiKeySaved"));
+  enrichItemsWithOMDb();
 });
 
 function handleOMDbLimit() {
@@ -2590,9 +2606,13 @@ function parseCSV(text) {
   const movieIdx = headers.indexOf("movie_name");
   const epCountIdx = headers.indexOf("ep_watch_count");
   const movieCountIdx = headers.indexOf("movie_watch_count");
+  const seasonIdx = headers.indexOf("season_number");
+  const episodeIdx = headers.indexOf("episode_number");
 
   const seriesMap = {};
   const movieMap = {};
+  // seriesEpisodes[seriesName][seasonNumber] = Set of watched episode numbers
+  const seriesEpisodes = {};
 
   for (let i = 1; i < lines.length; i++) {
     if (!lines[i].trim()) continue;
@@ -2603,8 +2623,22 @@ function parseCSV(text) {
 
     if (seriesName) {
       const epCount = parseInt(cols[epCountIdx]) || 0;
-      if (!seriesMap[seriesName]) seriesMap[seriesName] = 0;
-      seriesMap[seriesName] += epCount;
+      if (epCount > 0) {
+        if (!seriesMap[seriesName]) seriesMap[seriesName] = 0;
+        seriesMap[seriesName] += epCount;
+      }
+
+      // Per-episode watch-history rows carry season_number/episode_number
+      // instead of ep_watch_count; this is what lets us reconstruct exactly
+      // which episodes of which season were watched (rewatches just add
+      // the same episode number again, harmless since we use a Set).
+      const seasonNum = seasonIdx !== -1 ? parseInt(cols[seasonIdx]) : NaN;
+      const episodeNum = episodeIdx !== -1 ? parseInt(cols[episodeIdx]) : NaN;
+      if (!isNaN(seasonNum) && !isNaN(episodeNum)) {
+        if (!seriesEpisodes[seriesName]) seriesEpisodes[seriesName] = {};
+        if (!seriesEpisodes[seriesName][seasonNum]) seriesEpisodes[seriesName][seasonNum] = new Set();
+        seriesEpisodes[seriesName][seasonNum].add(episodeNum);
+      }
     }
 
     if (movieName) {
@@ -2614,23 +2648,56 @@ function parseCSV(text) {
   }
 
   let added = 0;
+  let updated = 0;
   let skipped = 0;
 
-  for (const name in seriesMap) {
-    if (items.some(i => i.type === "series" && i.title.toLowerCase() === name.toLowerCase())) {
-      skipped++;
+  const allSeriesNames = new Set([...Object.keys(seriesMap), ...Object.keys(seriesEpisodes)]);
+
+  for (const name of allSeriesNames) {
+    const episodesBySeason = seriesEpisodes[name];
+    const existing = items.find(i => i.type === "series" && i.title.toLowerCase() === name.toLowerCase());
+
+    if (existing) {
+      // Item already in the list: merge in any newly-known watched
+      // episodes instead of skipping, so re-importing the same export
+      // (or a fresher one) fills in detail that was missing before.
+      let gotNewData = false;
+      if (episodesBySeason) {
+        if (!existing.watchedEpisodes) existing.watchedEpisodes = {};
+        for (const seasonNum in episodesBySeason) {
+          const existingSet = new Set(existing.watchedEpisodes[seasonNum] || []);
+          const before = existingSet.size;
+          episodesBySeason[seasonNum].forEach(ep => existingSet.add(ep));
+          if (existingSet.size !== before) gotNewData = true;
+          existing.watchedEpisodes[seasonNum] = [...existingSet].sort((a, b) => a - b);
+        }
+      }
+      if (seriesMap[name] && (!existing.episodes || seriesMap[name] > existing.episodes)) {
+        existing.episodes = seriesMap[name];
+        gotNewData = true;
+      }
+      if (gotNewData) updated++; else skipped++;
       continue;
     }
+
+    const watchedEpisodes = {};
+    if (episodesBySeason) {
+      for (const seasonNum in episodesBySeason) {
+        watchedEpisodes[seasonNum] = [...episodesBySeason[seasonNum]].sort((a, b) => a - b);
+      }
+    }
+
     items.push({
       title: name,
       year: "",
-      episodes: seriesMap[name],
+      episodes: seriesMap[name] || "",
       poster: "",
       rating: "",
       plot: "",
       runtime: null,
       type: "series",
-      status: "watched"
+      status: "watched",
+      watchedEpisodes: watchedEpisodes
     });
     added++;
   }
@@ -2655,7 +2722,7 @@ function parseCSV(text) {
   }
 
   saveItems();
-  toast(t("csvImportedToast")(added, skipped));
+  toast(t("csvImportedToast")(added, skipped + updated));
 }
 
 document.getElementById("csvInput").addEventListener("change", (e) => {
@@ -2723,9 +2790,16 @@ async function fetchOMDbData(title, type) {
     }
   }
 
-  omdbCache[key] = fallback || { Response: "False" };
-  saveCache();
-  return omdbCache[key];
+  const finalResult = fallback || { Response: "False" };
+  // Only cache genuine "not found" results. If we got here because we hit
+  // the rate limit (not because OMDb genuinely has no match), caching it
+  // would permanently poison this title even after the limit resets or a
+  // working key is added.
+  if (!omdbLimitReached) {
+    omdbCache[key] = finalResult;
+    saveCache();
+  }
+  return finalResult;
 }
 
 async function enrichItemsWithOMDb() {
