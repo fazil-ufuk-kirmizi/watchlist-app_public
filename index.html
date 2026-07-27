@@ -1890,11 +1890,18 @@ function scheduleCloudSync() {
   cloudSyncTimer = setTimeout(() => pushItemsToCloud(), 1200);
 }
 
+// Firestore rejects any field whose value is `undefined` (unlike
+// localStorage/JSON.stringify, which just drops it). A round-trip through
+// JSON strips undefined values automatically, giving us a safe payload.
+function sanitizeForFirestore(data) {
+  return JSON.parse(JSON.stringify(data));
+}
+
 async function pushItemsToCloud() {
   if (!firebaseAvailable || !currentUser) return;
   try {
     await db.collection("watchlists").doc(currentUser.uid).set({
-      items: items,
+      items: sanitizeForFirestore(items),
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
   } catch (err) {
@@ -1920,7 +1927,7 @@ async function startCloudSync(user) {
       // First time this account has synced: seed the cloud with whatever
       // is currently in this browser (e.g. items added before logging in).
       await docRef.set({
-        items: items,
+        items: sanitizeForFirestore(items),
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       });
     }
