@@ -1574,6 +1574,7 @@ let currentUser = null;
 let cloudUnsubscribe = null;
 let cloudSyncTimer = null;
 let applyingRemoteUpdate = false;
+let pendingLocalWrite = false;
 let authMode = "login"; // "login" | "register"
 
 const STRINGS = {
@@ -1886,6 +1887,7 @@ function saveItems() {
 
 function scheduleCloudSync() {
   if (!firebaseAvailable || !currentUser) return;
+  pendingLocalWrite = true;
   clearTimeout(cloudSyncTimer);
   cloudSyncTimer = setTimeout(() => pushItemsToCloud(), 1200);
 }
@@ -1904,6 +1906,7 @@ async function pushItemsToCloud() {
       items: sanitizeForFirestore(items),
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
+    pendingLocalWrite = false;
   } catch (err) {
     console.error("Cloud sync error:", err);
   }
@@ -1938,6 +1941,7 @@ async function startCloudSync(user) {
   if (cloudUnsubscribe) cloudUnsubscribe();
   cloudUnsubscribe = docRef.onSnapshot((doc) => {
     if (!doc.exists) return;
+    if (doc.metadata.hasPendingWrites || pendingLocalWrite) return;
     const data = doc.data();
     if (!Array.isArray(data.items)) return;
     // Ignore the echo of our own just-completed write.
