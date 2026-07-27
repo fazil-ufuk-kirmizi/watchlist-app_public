@@ -2359,6 +2359,7 @@ document.getElementById("apiKeySave").addEventListener("click", () => {
   }
   currentKeyIndex = 0;
   omdbLimitReached = false;
+  try { localStorage.removeItem(STORAGE_OMDB_LIMIT_HIT_AT); } catch (err) {}
 
   // Earlier "not found" results may actually have been caused by the
   // previous key hitting its rate limit rather than a genuine no-match.
@@ -2379,10 +2380,24 @@ document.getElementById("apiKeySave").addEventListener("click", () => {
   enrichItemsWithOMDb();
 });
 
+const STORAGE_OMDB_LIMIT_HIT_AT = "watchlist.omdbLimitHitAt.v1";
+const OMDB_LIMIT_COOLDOWN_MS = 6 * 60 * 60 * 1000; // 6 hours
+
 function handleOMDbLimit() {
   if (omdbLimitReached) return;
   omdbLimitReached = true;
+  try { localStorage.setItem(STORAGE_OMDB_LIMIT_HIT_AT, String(Date.now())); } catch (err) {}
   toast(t("limitReached"), true);
+}
+
+function isOMDbInCooldown() {
+  try {
+    const hitAt = parseInt(localStorage.getItem(STORAGE_OMDB_LIMIT_HIT_AT), 10);
+    if (!hitAt) return false;
+    return (Date.now() - hitAt) < OMDB_LIMIT_COOLDOWN_MS;
+  } catch (err) {
+    return false;
+  }
 }
 
 async function omdbFetch(params) {
@@ -2803,6 +2818,7 @@ async function fetchOMDbData(title, type) {
 }
 
 async function enrichItemsWithOMDb() {
+  if (isOMDbInCooldown()) return;
   for (const item of items) {
     if (omdbLimitReached) return;
     if (item.poster || item.notFound) continue;
