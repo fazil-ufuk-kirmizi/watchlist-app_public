@@ -1899,7 +1899,7 @@ function sanitizeForFirestore(data) {
   return JSON.parse(JSON.stringify(data));
 }
 
-async function pushItemsToCloud() {
+async function pushItemsToCloud(isRetry) {
   if (!firebaseAvailable || !currentUser) return;
   try {
     await db.collection("watchlists").doc(currentUser.uid).set({
@@ -1909,6 +1909,12 @@ async function pushItemsToCloud() {
     pendingLocalWrite = false;
   } catch (err) {
     console.error("Cloud sync error:", err);
+    if (!isRetry) {
+      setTimeout(() => pushItemsToCloud(true), 4000);
+    } else {
+      pendingLocalWrite = false;
+      toast(`Bulut yedekleme başarısız: ${err.message || err.code || "bilinmeyen hata"}`);
+    }
   }
 }
 
