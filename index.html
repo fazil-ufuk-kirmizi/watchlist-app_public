@@ -1534,6 +1534,7 @@ const DEFAULT_API_KEYS = ["3dbdd36d"];
 const API_URL = "https://www.omdbapi.com/";
 
 const STORAGE_ITEMS = "watchlist.items.v1";
+const STORAGE_UNSYNCED = "watchlist.unsynced.v1";
 const STORAGE_CACHE = "watchlist.omdbCache.v1";
 const STORAGE_APIKEY = "watchlist.userApiKey.v1";
 const STORAGE_LANG = "watchlist.lang.v1";
@@ -1871,6 +1872,7 @@ function loadItems() {
 function saveItems() {
   try {
     localStorage.setItem(STORAGE_ITEMS, JSON.stringify(items));
+    if (!applyingRemoteUpdate) localStorage.setItem(STORAGE_UNSYNCED, "1");
   } catch (err) {
   }
   scheduleGithubSync();
@@ -1907,6 +1909,7 @@ async function pushItemsToCloud(isRetry) {
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
     pendingLocalWrite = false;
+    localStorage.removeItem(STORAGE_UNSYNCED);
   } catch (err) {
     console.error("Cloud sync error:", err);
     if (!isRetry) {
@@ -1922,26 +1925,30 @@ async function startCloudSync(user) {
   currentUser = user;
   const docRef = db.collection("watchlists").doc(user.uid);
 
-  try {
-    const snap = await docRef.get();
-    if (snap.exists && Array.isArray(snap.data().items)) {
-      applyingRemoteUpdate = true;
-      items = snap.data().items;
-      items.forEach(i => { if (!i.status) i.status = "watched"; });
-      localStorage.setItem(STORAGE_ITEMS, JSON.stringify(items));
-      render(document.getElementById("liveSearch") ? document.getElementById("liveSearch").value : "");
-      applyingRemoteUpdate = false;
-      enrichItemsWithOMDb();
-    } else {
-      // First time this account has synced: seed the cloud with whatever
-      // is currently in this browser (e.g. items added before logging in).
-      await docRef.set({
-        items: sanitizeForFirestore(items),
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
+  if (localStorage.getItem(STORAGE_UNSYNCED) === "1") {
+    await pushItemsToCloud();
+  } else {
+    try {
+      const snap = await docRef.get();
+      if (snap.exists && Array.isArray(snap.data().items)) {
+        applyingRemoteUpdate = true;
+        items = snap.data().items;
+        items.forEach(i => { if (!i.status) i.status = "watched"; });
+        localStorage.setItem(STORAGE_ITEMS, JSON.stringify(items));
+        render(document.getElementById("liveSearch") ? document.getElementById("liveSearch").value : "");
+        applyingRemoteUpdate = false;
+        enrichItemsWithOMDb();
+      } else {
+        // First time this account has synced: seed the cloud with whatever
+        // is currently in this browser (e.g. items added before logging in).
+        await docRef.set({
+          items: sanitizeForFirestore(items),
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      }
+    } catch (err) {
+      console.error("Initial cloud load error:", err);
     }
-  } catch (err) {
-    console.error("Initial cloud load error:", err);
   }
 
   if (cloudUnsubscribe) cloudUnsubscribe();
