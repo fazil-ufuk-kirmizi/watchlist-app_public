@@ -1858,6 +1858,12 @@ function showConfirm(message) {
   ]).then(v => !!v);
 }
 
+function ensureItemIds() {
+  items.forEach(i => {
+    if (!i.id) i.id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+  });
+}
+
 function loadItems() {
   try {
     const raw = localStorage.getItem(STORAGE_ITEMS);
@@ -1870,6 +1876,7 @@ function loadItems() {
 }
 
 function saveItems() {
+  ensureItemIds();
   try {
     localStorage.setItem(STORAGE_ITEMS, JSON.stringify(items));
     if (!applyingRemoteUpdate) localStorage.setItem(STORAGE_UNSYNCED, "1");
@@ -1904,10 +1911,35 @@ function sanitizeForFirestore(data) {
 async function pushItemsToCloud(isRetry) {
   if (!firebaseAvailable || !currentUser) return;
   try {
-    await db.collection("watchlists").doc(currentUser.uid).set({
-      items: sanitizeForFirestore(items),
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    ensureItemIds();
+    const itemsRef = db.collection("watchlists").doc(currentUser.uid).collection("items");
+    const existingSnap = await itemsRef.get();
+    const existingIds = new Set(existingSnap.docs.map(d => d.id));
+    const currentIds = new Set(items.map(i => i.id));
+
+    const ops = [];
+    items.forEach((item, index) => {
+      ops.push({ id: item.id, data: { ...sanitizeForFirestore(item), order: index }, delete: false });
     });
+    existingIds.forEach(id => {
+      if (!currentIds.has(id)) ops.push({ id, delete: true });
+    });
+
+    for (let i = 0; i < ops.length; i += 400) {
+      const batch = db.batch();
+      ops.slice(i, i + 400).forEach(op => {
+        const ref = itemsRef.doc(op.id);
+        if (op.delete) batch.delete(ref);
+        else batch.set(ref, op.data);
+      });
+      await batch.commit();
+    }
+
+    await db.collection("watchlists").doc(currentUser.uid).set({
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      itemCount: items.length
+    }, { merge: true });
+
     pendingLocalWrite = false;
     localStorage.removeItem(STORAGE_UNSYNCED);
   } catch (err) {
@@ -1924,27 +1956,42 @@ async function pushItemsToCloud(isRetry) {
 async function startCloudSync(user) {
   currentUser = user;
   const docRef = db.collection("watchlists").doc(user.uid);
+  const itemsRef = docRef.collection("items");
 
   if (localStorage.getItem(STORAGE_UNSYNCED) === "1") {
     await pushItemsToCloud();
   } else {
     try {
-      const snap = await docRef.get();
-      if (snap.exists && Array.isArray(snap.data().items)) {
+      const itemsSnap = await itemsRef.get();
+      if (!itemsSnap.empty) {
         applyingRemoteUpdate = true;
-        items = snap.data().items;
+        items = itemsSnap.docs
+          .map(d => ({ ...d.data(), _order: d.data().order }))
+          .sort((a, b) => a._order - b._order)
+          .map(i => { delete i._order; delete i.order; return i; });
         items.forEach(i => { if (!i.status) i.status = "watched"; });
         localStorage.setItem(STORAGE_ITEMS, JSON.stringify(items));
         render(document.getElementById("liveSearch") ? document.getElementById("liveSearch").value : "");
         applyingRemoteUpdate = false;
         enrichItemsWithOMDb();
       } else {
-        // First time this account has synced: seed the cloud with whatever
-        // is currently in this browser (e.g. items added before logging in).
-        await docRef.set({
-          items: sanitizeForFirestore(items),
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
+        const legacySnap = await docRef.get();
+        if (legacySnap.exists && Array.isArray(legacySnap.data().items) && legacySnap.data().items.length) {
+          // Legacy single-document format: adopt it locally, then migrate to per-item docs.
+          applyingRemoteUpdate = true;
+          items = legacySnap.data().items;
+          items.forEach(i => { if (!i.status) i.status = "watched"; });
+          localStorage.setItem(STORAGE_ITEMS, JSON.stringify(items));
+          render(document.getElementById("liveSearch") ? document.getElementById("liveSearch").value : "");
+          applyingRemoteUpdate = false;
+          await pushItemsToCloud();
+          await docRef.set({ items: firebase.firestore.FieldValue.delete() }, { merge: true });
+          enrichItemsWithOMDb();
+        } else {
+          // First time this account has synced: seed the cloud with whatever
+          // is currently in this browser (e.g. items added before logging in).
+          await pushItemsToCloud();
+        }
       }
     } catch (err) {
       console.error("Initial cloud load error:", err);
@@ -1952,15 +1999,15 @@ async function startCloudSync(user) {
   }
 
   if (cloudUnsubscribe) cloudUnsubscribe();
-  cloudUnsubscribe = docRef.onSnapshot((doc) => {
-    if (!doc.exists) return;
-    if (doc.metadata.hasPendingWrites || pendingLocalWrite) return;
-    const data = doc.data();
-    if (!Array.isArray(data.items)) return;
-    // Ignore the echo of our own just-completed write.
-    if (JSON.stringify(data.items) === JSON.stringify(items)) return;
+  cloudUnsubscribe = itemsRef.onSnapshot((snapshot) => {
+    if (snapshot.metadata.hasPendingWrites || pendingLocalWrite) return;
+    const incoming = snapshot.docs
+      .map(d => ({ ...d.data(), _order: d.data().order }))
+      .sort((a, b) => a._order - b._order)
+      .map(i => { delete i._order; delete i.order; return i; });
+    if (JSON.stringify(incoming) === JSON.stringify(items)) return;
     applyingRemoteUpdate = true;
-    items = data.items;
+    items = incoming;
     items.forEach(i => { if (!i.status) i.status = "watched"; });
     localStorage.setItem(STORAGE_ITEMS, JSON.stringify(items));
     render(document.getElementById("liveSearch") ? document.getElementById("liveSearch").value : "");
