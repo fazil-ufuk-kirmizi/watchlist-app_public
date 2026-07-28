@@ -2695,6 +2695,11 @@ function parseCSV(text) {
         existing.episodes = seriesMap[name];
         gotNewData = true;
       }
+      if (existing.status !== "watched") {
+        existing.status = "watched";
+        existing.watchedDate = existing.watchedDate || new Date().toISOString();
+        gotNewData = true;
+      }
       if (gotNewData) updated++; else skipped++;
       continue;
     }
