@@ -3662,6 +3662,7 @@ function renderDetailsBody(item) {
       item.watchedEpisodes[activeSeasonNum] = e.target.checked
         ? episodes.map(ep => parseInt(ep.Episode))
         : [];
+      if (e.target.checked) item.watchedDate = new Date().toISOString();
       saveItems();
       loadSeasonEpisodes(activeSeasonNum);
       updateEpisodeModalFooter();
