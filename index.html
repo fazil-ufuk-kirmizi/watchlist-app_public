@@ -436,6 +436,26 @@
     cursor: pointer;
   }
 
+  select {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 14px 16px;
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: var(--transition);
+    flex: 0 0 auto;
+    max-width: 180px;
+  }
+
+  select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px rgba(255, 213, 74, 0.15);
+  }
+
   input[type="file"]::file-selector-button {
     background: var(--primary-gradient);
     color: #090B10;
@@ -1483,7 +1503,10 @@
     </div>
     <div class="control-block">
       <h2 id="labelSearchMine">Listemde Ara</h2>
-      <input type="text" id="liveSearch" placeholder="Listeni filtrele...">
+      <div class="row">
+        <input type="text" id="liveSearch" placeholder="Listeni filtrele...">
+        <select id="genreFilter"></select>
+      </div>
     </div>
   </div>
 </header>
@@ -1589,6 +1612,7 @@ const STRINGS = {
     searchPlaceholder: "Aramak için yaz...",
     labelSearchMine: "Listemde Ara",
     filterPlaceholder: "Listeni filtrele...",
+    allGenres: "Tüm Kategoriler",
     statTitles: "Toplam Yapım",
     statEpisodes: "İzlenen Bölüm",
     statMovies: "İzlenen Film",
@@ -1679,6 +1703,7 @@ const STRINGS = {
     searchPlaceholder: "Type to search...",
     labelSearchMine: "Search My List",
     filterPlaceholder: "Filter your list...",
+    allGenres: "All Genres",
     statTitles: "Total Titles",
     statEpisodes: "Episodes Watched",
     statMovies: "Movies Watched",
@@ -1805,6 +1830,7 @@ function applyLanguage() {
   document.getElementById("detailsModalClose").setAttribute("aria-label", t("closeLabel"));
   document.getElementById("langBtnTr").classList.toggle("active", currentLang === "tr");
   document.getElementById("langBtnEn").classList.toggle("active", currentLang === "en");
+  populateGenreFilter();
   render(document.getElementById("liveSearch").value);
   if (activeEpisodeItem) {
     renderSeasonTabs();
@@ -2498,10 +2524,32 @@ function formatDate(iso) {
   return d.toLocaleDateString(currentLang === "tr" ? "tr-TR" : "en-US", { year: "numeric", month: "long", day: "numeric" });
 }
 
+function getItemGenres(item) {
+  return (item.genre || "").split(",").map(g => g.trim()).filter(Boolean);
+}
+
+function populateGenreFilter() {
+  const select = document.getElementById("genreFilter");
+  const previous = select.value;
+  const genreSet = new Set();
+  items.forEach(item => getItemGenres(item).forEach(g => genreSet.add(g)));
+  const genres = Array.from(genreSet).sort((a, b) => a.localeCompare(b));
+
+  select.innerHTML = `<option value="">${t("allGenres")}</option>` +
+    genres.map(g => `<option value="${g}">${g}</option>`).join("");
+
+  select.value = genres.includes(previous) ? previous : "";
+}
+
 function render(filter) {
-  const list = filter
-    ? items.filter(i => i.title.toLowerCase().includes(filter.toLowerCase()))
-    : items;
+  populateGenreFilter();
+  const genreFilter = document.getElementById("genreFilter").value;
+
+  const list = items.filter(i => {
+    const matchesText = !filter || i.title.toLowerCase().includes(filter.toLowerCase());
+    const matchesGenre = !genreFilter || getItemGenres(i).includes(genreFilter);
+    return matchesText && matchesGenre;
+  });
 
   const seriesList = list.filter(i => i.type === "series");
   const movieList = list.filter(i => i.type === "movie");
@@ -2954,6 +3002,10 @@ async function computeSeriesTotalForItem(item) {
     render(document.getElementById("liveSearch").value);
   }
 }
+
+document.getElementById("genreFilter").addEventListener("change", () => {
+  render(document.getElementById("liveSearch").value);
+});
 
 document.getElementById("liveSearch").addEventListener("input", (e) => {
   render(e.target.value);
