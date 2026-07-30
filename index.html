@@ -1900,6 +1900,50 @@ function itemKey(item) {
 // type+title when no imdbID is present) into a single entry, keeping the
 // most complete data. Used to clean up duplicates that can appear when
 // two devices/tabs add or sync the same title at nearly the same time.
+function mergeItemPair(existing, incoming) {
+  const merged = { ...existing };
+
+  // For plain fields, only take the incoming value if the existing one is empty.
+  Object.keys(incoming).forEach(key => {
+    const val = incoming[key];
+    const isEmpty = val === undefined || val === null || val === "";
+    if (isEmpty) return;
+    const current = merged[key];
+    if (current === undefined || current === null || current === "") merged[key] = val;
+  });
+
+  merged.status = (existing.status === "watched" || incoming.status === "watched")
+    ? "watched"
+    : (existing.status || incoming.status);
+  merged.watchedDate = existing.watchedDate || incoming.watchedDate;
+
+  // Union the watched-episode lists per season, don't let one copy replace the other.
+  const watchedEpisodes = {};
+  new Set([...Object.keys(existing.watchedEpisodes || {}), ...Object.keys(incoming.watchedEpisodes || {})])
+    .forEach(season => {
+      const a = (existing.watchedEpisodes && existing.watchedEpisodes[season]) || [];
+      const b = (incoming.watchedEpisodes && incoming.watchedEpisodes[season]) || [];
+      watchedEpisodes[season] = Array.from(new Set([...a, ...b])).sort((x, y) => x - y);
+    });
+  merged.watchedEpisodes = watchedEpisodes;
+
+  // Keep whichever copy's season episode list is more complete per season.
+  const seasonCache = {};
+  new Set([...Object.keys(existing.seasonCache || {}), ...Object.keys(incoming.seasonCache || {})])
+    .forEach(season => {
+      const a = (existing.seasonCache && existing.seasonCache[season]) || [];
+      const b = (incoming.seasonCache && incoming.seasonCache[season]) || [];
+      seasonCache[season] = a.length >= b.length ? a : b;
+    });
+  merged.seasonCache = seasonCache;
+
+  merged.totalEpisodes = Math.max(existing.totalEpisodes || 0, incoming.totalEpisodes || 0) || undefined;
+  merged.totalSeasons = Math.max(existing.totalSeasons || 0, incoming.totalSeasons || 0) || undefined;
+  merged.id = canonicalId(existing) || canonicalId(incoming) || existing.id || incoming.id;
+
+  return merged;
+}
+
 function dedupeItems(list) {
   const map = new Map();
   const order = [];
@@ -1910,14 +1954,7 @@ function dedupeItems(list) {
       order.push(key);
       return;
     }
-    const existing = map.get(key);
-    const merged = { ...existing, ...item };
-    merged.status = (existing.status === "watched" || item.status === "watched") ? "watched" : "towatch";
-    merged.watchedEpisodes = { ...(existing.watchedEpisodes || {}), ...(item.watchedEpisodes || {}) };
-    merged.watchedDate = existing.watchedDate || item.watchedDate;
-    merged.poster = existing.poster || item.poster;
-    merged.plot = existing.plot || item.plot;
-    map.set(key, merged);
+    map.set(key, mergeItemPair(map.get(key), item));
   });
   return order.map(k => map.get(k));
 }
