@@ -1884,9 +1884,47 @@ function showConfirm(message) {
   ]).then(v => !!v);
 }
 
+// Items with an imdbID get a stable id derived from it, so the same title
+// always maps to the same Firestore doc no matter which device added it.
+// This is what prevents two devices from creating two separate cloud docs
+// for the same movie/series.
+function canonicalId(item) {
+  return item.imdbID ? `imdb-${item.imdbID}` : item.id;
+}
+
+function itemKey(item) {
+  return item.imdbID ? `imdb:${item.imdbID}` : `t:${item.type}:${(item.title || "").toLowerCase()}`;
+}
+
+// Collapses items that refer to the same title (matched by imdbID, or by
+// type+title when no imdbID is present) into a single entry, keeping the
+// most complete data. Used to clean up duplicates that can appear when
+// two devices/tabs add or sync the same title at nearly the same time.
+function dedupeItems(list) {
+  const map = new Map();
+  const order = [];
+  list.forEach(item => {
+    const key = itemKey(item);
+    if (!map.has(key)) {
+      map.set(key, item);
+      order.push(key);
+      return;
+    }
+    const existing = map.get(key);
+    const merged = { ...existing, ...item };
+    merged.status = (existing.status === "watched" || item.status === "watched") ? "watched" : "towatch";
+    merged.watchedEpisodes = { ...(existing.watchedEpisodes || {}), ...(item.watchedEpisodes || {}) };
+    merged.watchedDate = existing.watchedDate || item.watchedDate;
+    merged.poster = existing.poster || item.poster;
+    merged.plot = existing.plot || item.plot;
+    map.set(key, merged);
+  });
+  return order.map(k => map.get(k));
+}
+
 function ensureItemIds() {
   items.forEach(i => {
-    if (!i.id) i.id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+    i.id = canonicalId(i) || `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
   });
 }
 
@@ -1895,7 +1933,7 @@ function loadItems() {
     const raw = localStorage.getItem(STORAGE_ITEMS);
     const parsed = raw ? JSON.parse(raw) : [];
     parsed.forEach(i => { if (!i.status) i.status = "watched"; });
-    return parsed;
+    return dedupeItems(parsed);
   } catch (err) {
     return [];
   }
@@ -1991,21 +2029,23 @@ async function startCloudSync(user) {
       const itemsSnap = await itemsRef.get();
       if (!itemsSnap.empty) {
         applyingRemoteUpdate = true;
-        items = itemsSnap.docs
+        const raw = itemsSnap.docs
           .map(d => ({ ...d.data(), _order: d.data().order }))
           .sort((a, b) => a._order - b._order)
           .map(i => { delete i._order; delete i.order; return i; });
-        items.forEach(i => { if (!i.status) i.status = "watched"; });
+        raw.forEach(i => { if (!i.status) i.status = "watched"; });
+        items = dedupeItems(raw);
         localStorage.setItem(STORAGE_ITEMS, JSON.stringify(items));
         render(document.getElementById("liveSearch") ? document.getElementById("liveSearch").value : "");
         applyingRemoteUpdate = false;
+        if (items.length !== raw.length) await pushItemsToCloud();
         enrichItemsWithOMDb();
       } else {
         const legacySnap = await docRef.get();
         if (legacySnap.exists && Array.isArray(legacySnap.data().items) && legacySnap.data().items.length) {
           // Legacy single-document format: adopt it locally, then migrate to per-item docs.
           applyingRemoteUpdate = true;
-          items = legacySnap.data().items;
+          items = dedupeItems(legacySnap.data().items);
           items.forEach(i => { if (!i.status) i.status = "watched"; });
           localStorage.setItem(STORAGE_ITEMS, JSON.stringify(items));
           render(document.getElementById("liveSearch") ? document.getElementById("liveSearch").value : "");
@@ -2027,10 +2067,11 @@ async function startCloudSync(user) {
   if (cloudUnsubscribe) cloudUnsubscribe();
   cloudUnsubscribe = itemsRef.onSnapshot((snapshot) => {
     if (snapshot.metadata.hasPendingWrites || pendingLocalWrite) return;
-    const incoming = snapshot.docs
+    const raw = snapshot.docs
       .map(d => ({ ...d.data(), _order: d.data().order }))
       .sort((a, b) => a._order - b._order)
       .map(i => { delete i._order; delete i.order; return i; });
+    const incoming = dedupeItems(raw);
     if (JSON.stringify(incoming) === JSON.stringify(items)) return;
     applyingRemoteUpdate = true;
     items = incoming;
@@ -2038,6 +2079,7 @@ async function startCloudSync(user) {
     localStorage.setItem(STORAGE_ITEMS, JSON.stringify(items));
     render(document.getElementById("liveSearch") ? document.getElementById("liveSearch").value : "");
     applyingRemoteUpdate = false;
+    if (incoming.length !== raw.length) pushItemsToCloud();
   });
 }
 
