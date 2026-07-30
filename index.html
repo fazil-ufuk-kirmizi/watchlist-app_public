@@ -621,6 +621,50 @@
     border-radius: 20px;
   }
 
+  .subsection-title {
+    cursor: pointer;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  .drawer-chevron {
+    width: 16px;
+    height: 16px;
+    color: var(--text-dim);
+    transition: var(--transition);
+  }
+
+  .subsection-title.expanded .drawer-chevron {
+    transform: rotate(90deg);
+  }
+
+  .grid.row-view {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 20px;
+    padding-bottom: 14px;
+    scroll-snap-type: x proximity;
+  }
+
+  .grid.row-view::-webkit-scrollbar {
+    height: 8px;
+  }
+
+  .grid.row-view::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .grid.row-view::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+  }
+
+  .grid.row-view .card {
+    flex: 0 0 190px;
+    scroll-snap-align: start;
+  }
+
   .card {
     background: var(--surface);
     border-radius: var(--radius-md);
@@ -1414,6 +1458,7 @@
     .control-block { flex-basis: 100%; }
     .section-title { font-size: 20px; margin: 32px 0 18px 0; }
     .grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; }
+    .grid.row-view .card { flex-basis: 130px; }
     .card-media { height: 190px; }
     .card-body { padding: 14px; }
     .card-title { font-size: 14px; }
@@ -1537,16 +1582,16 @@
 
 <main>
   <h2 class="section-title"><span id="labelSeries">Diziler</span> <span class="count" id="seriesCount">0</span></h2>
-  <h3 class="subsection-title"><span id="labelSeriesWatched">İzlenenler</span> <span class="count" id="seriesWatchedCount">0</span></h3>
-  <div class="grid" id="seriesWatchedGrid"></div>
-  <h3 class="subsection-title"><span id="labelSeriesToWatch">İzlemek İstiyorum</span> <span class="count" id="seriesToWatchCount">0</span></h3>
-  <div class="grid" id="seriesToWatchGrid"></div>
+  <h3 class="subsection-title" id="seriesWatchedHeader" data-section="seriesWatched"><span id="labelSeriesWatched">İzlenenler</span> <span class="count" id="seriesWatchedCount">0</span><svg class="drawer-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></h3>
+  <div class="grid row-view" id="seriesWatchedGrid"></div>
+  <h3 class="subsection-title" id="seriesToWatchHeader" data-section="seriesToWatch"><span id="labelSeriesToWatch">İzlemek İstiyorum</span> <span class="count" id="seriesToWatchCount">0</span><svg class="drawer-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></h3>
+  <div class="grid row-view" id="seriesToWatchGrid"></div>
 
   <h2 class="section-title"><span id="labelMovies">Filmler</span> <span class="count" id="movieCount">0</span></h2>
-  <h3 class="subsection-title"><span id="labelMoviesWatched">İzlenenler</span> <span class="count" id="movieWatchedCount">0</span></h3>
-  <div class="grid" id="movieWatchedGrid"></div>
-  <h3 class="subsection-title"><span id="labelMoviesToWatch">İzlemek İstiyorum</span> <span class="count" id="movieToWatchCount">0</span></h3>
-  <div class="grid" id="movieToWatchGrid"></div>
+  <h3 class="subsection-title" id="movieWatchedHeader" data-section="movieWatched"><span id="labelMoviesWatched">İzlenenler</span> <span class="count" id="movieWatchedCount">0</span><svg class="drawer-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></h3>
+  <div class="grid row-view" id="movieWatchedGrid"></div>
+  <h3 class="subsection-title" id="movieToWatchHeader" data-section="movieToWatch"><span id="labelMoviesToWatch">İzlemek İstiyorum</span> <span class="count" id="movieToWatchCount">0</span><svg class="drawer-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></h3>
+  <div class="grid row-view" id="movieToWatchGrid"></div>
 </main>
 
 <div class="modal-overlay" id="detailsModal">
@@ -3118,6 +3163,29 @@ async function computeSeriesTotalForItem(item) {
 
 document.getElementById("genreFilter").addEventListener("change", () => {
   render(document.getElementById("liveSearch").value);
+});
+
+// Each section starts as a horizontally scrollable "drawer" (like TV Time);
+// clicking its header expands it into the full wrapping grid, and clicking
+// again collapses it back to the scrollable row.
+const sectionKeys = ["seriesWatched", "seriesToWatch", "movieWatched", "movieToWatch"];
+const expandedSections = {};
+sectionKeys.forEach(key => { expandedSections[key] = false; });
+
+function applySectionState(key) {
+  const header = document.getElementById(`${key}Header`);
+  const grid = document.getElementById(`${key}Grid`);
+  const isExpanded = expandedSections[key];
+  header.classList.toggle("expanded", isExpanded);
+  grid.classList.toggle("row-view", !isExpanded);
+}
+
+sectionKeys.forEach(key => {
+  document.getElementById(`${key}Header`).addEventListener("click", () => {
+    expandedSections[key] = !expandedSections[key];
+    applySectionState(key);
+  });
+  applySectionState(key);
 });
 
 document.getElementById("liveSearch").addEventListener("input", (e) => {
