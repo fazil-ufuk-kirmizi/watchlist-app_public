@@ -1973,11 +1973,6 @@ function mergeItemPair(existing, incoming) {
     if (current === undefined || current === null || current === "") merged[key] = val;
   });
 
-  merged.status = (existing.status === "watched" || incoming.status === "watched")
-    ? "watched"
-    : (existing.status || incoming.status);
-  merged.watchedDate = existing.watchedDate || incoming.watchedDate;
-
   // Union the watched-episode lists per season, don't let one copy replace the other.
   const watchedEpisodes = {};
   new Set([...Object.keys(existing.watchedEpisodes || {}), ...Object.keys(incoming.watchedEpisodes || {})])
@@ -1987,6 +1982,27 @@ function mergeItemPair(existing, incoming) {
       watchedEpisodes[season] = Array.from(new Set([...a, ...b])).sort((x, y) => x - y);
     });
   merged.watchedEpisodes = watchedEpisodes;
+
+  const mergedType = existing.type || incoming.type;
+  if (mergedType === "series") {
+    // A "watched" label on a series only counts if it's backed by real
+    // evidence (an actual episode count or recorded watched episodes).
+    // Otherwise a stale "watched" copy (e.g. from an earlier import bug)
+    // would keep winning over a correctly re-imported "towatch" copy every
+    // time duplicates get merged on load/sync.
+    const hasEvidence = Object.values(watchedEpisodes).some(arr => arr.length > 0) ||
+      (parseInt(existing.episodes) > 0) || (parseInt(incoming.episodes) > 0);
+    merged.status = hasEvidence
+      ? "watched"
+      : (existing.status === "towatch" || incoming.status === "towatch")
+        ? "towatch"
+        : (existing.status || incoming.status || "towatch");
+  } else {
+    merged.status = (existing.status === "watched" || incoming.status === "watched")
+      ? "watched"
+      : (existing.status || incoming.status);
+  }
+  merged.watchedDate = merged.status === "watched" ? (existing.watchedDate || incoming.watchedDate) : undefined;
 
   // Keep whichever copy's season episode list is more complete per season.
   const seasonCache = {};
@@ -2004,6 +2020,7 @@ function mergeItemPair(existing, incoming) {
 
   return merged;
 }
+
 
 function dedupeItems(list) {
   const map = new Map();
@@ -3073,9 +3090,14 @@ function parseCSV(text) {
       } else {
         // This CSV row shows 0 watched episodes for this title - always
         // move it to "want to watch", no matter what status it had before.
-        if (existing.status !== "towatch") {
+        // Clear any leftover episode/episode-count evidence too, so a
+        // later duplicate merge (dedupeItems/mergeItemPair) doesn't see
+        // stale data and flip it back to "watched".
+        if (existing.status !== "towatch" || existing.watchedDate || (existing.watchedEpisodes && Object.keys(existing.watchedEpisodes).length)) {
           existing.status = "towatch";
           existing.watchedDate = undefined;
+          existing.watchedEpisodes = {};
+          existing.episodes = "";
           gotNewData = true;
         }
       }
