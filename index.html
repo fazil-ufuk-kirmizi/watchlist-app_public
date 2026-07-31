@@ -2942,8 +2942,10 @@ function parseCSV(text) {
     ? (genericNameIdx !== undefined ? genericNameIdx : headers.length - 1)
     : undefined;
 
-  const epCountIdx = headers.indexOf("watch_count");
-  const movieCountIdx = headers.indexOf("movie_watch_count");
+  const epCountIdx = ["watch_count", "ep_watch_count", "watched_episode_count"]
+    .map(h => headers.indexOf(h)).find(i => i !== -1) ?? -1;
+  const movieCountIdx = ["movie_watch_count", "movie_count"]
+    .map(h => headers.indexOf(h)).find(i => i !== -1) ?? -1;
   const seasonIdx = headers.indexOf("season_number");
   const episodeIdx = headers.indexOf("episode_number");
   const dateIdx = ["created_at", "watched_at", "watched_date", "watch_date", "updated_at", "most_recent_ep_watched", "followed_at", "date"]
@@ -3069,13 +3071,9 @@ function parseCSV(text) {
           existing.watchedDate = new Date().toISOString();
         }
       } else {
-        // This CSV row shows 0 watched episodes. Only correct the item to
-        // "towatch" if there's no actual evidence anywhere (episode count,
-        // recorded watched episodes) that it was really watched - otherwise
-        // this branch would wrongly demote something genuinely watched.
-        const hasRealEvidence = (parseInt(existing.episodes) > 0) ||
-          (existing.watchedEpisodes && Object.values(existing.watchedEpisodes).some(arr => Array.isArray(arr) && arr.length > 0));
-        if (!hasRealEvidence && existing.status !== "towatch") {
+        // This CSV row shows 0 watched episodes for this title - always
+        // move it to "want to watch", no matter what status it had before.
+        if (existing.status !== "towatch") {
           existing.status = "towatch";
           existing.watchedDate = undefined;
           gotNewData = true;
