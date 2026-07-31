@@ -3020,6 +3020,15 @@ function parseCSV(text) {
     const episodesBySeason = seriesEpisodes[name];
     const existing = items.find(i => i.type === "series" && i.title.toLowerCase() === name.toLowerCase());
 
+    // A series with no watched episodes at all (watch_count is 0/missing
+    // AND no per-episode rows) hasn't actually been watched - import it
+    // to the "want to watch" list instead of marking it watched.
+    let watchedEpisodeCount = 0;
+    if (episodesBySeason) {
+      for (const seasonNum in episodesBySeason) watchedEpisodeCount += episodesBySeason[seasonNum].size;
+    }
+    const hasWatchedData = (seriesMap[name] || 0) > 0 || watchedEpisodeCount > 0;
+
     if (existing) {
       // Item already in the list: merge in any newly-known watched
       // episodes instead of skipping, so re-importing the same export
@@ -3039,15 +3048,22 @@ function parseCSV(text) {
         existing.episodes = seriesMap[name];
         gotNewData = true;
       }
-      if (existing.status !== "watched") {
-        existing.status = "watched";
+      if (hasWatchedData) {
+        // Only ever promotes towards "watched" - a 0-episode row from the
+        // CSV never demotes an item the person already marked watched.
+        if (existing.status !== "watched") {
+          existing.status = "watched";
+          gotNewData = true;
+        }
+        if (seriesDates[name]) {
+          existing.watchedDate = seriesDates[name].toISOString();
+          gotNewData = true;
+        } else if (!existing.watchedDate) {
+          existing.watchedDate = new Date().toISOString();
+        }
+      } else if (!existing.status) {
+        existing.status = "towatch";
         gotNewData = true;
-      }
-      if (seriesDates[name]) {
-        existing.watchedDate = seriesDates[name].toISOString();
-        gotNewData = true;
-      } else if (!existing.watchedDate) {
-        existing.watchedDate = new Date().toISOString();
       }
       if (gotNewData) updated++; else skipped++;
       continue;
@@ -3069,8 +3085,8 @@ function parseCSV(text) {
       plot: "",
       runtime: null,
       type: "series",
-      status: "watched",
-      watchedDate: seriesDates[name] ? seriesDates[name].toISOString() : new Date().toISOString(),
+      status: hasWatchedData ? "watched" : "towatch",
+      watchedDate: hasWatchedData ? (seriesDates[name] ? seriesDates[name].toISOString() : new Date().toISOString()) : undefined,
       watchedEpisodes: watchedEpisodes
     });
     added++;
