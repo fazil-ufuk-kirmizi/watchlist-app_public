@@ -2963,8 +2963,10 @@ function parseCSV(text) {
     .map(h => headers.indexOf(h)).find(i => i !== -1) ?? -1;
   const movieCountIdx = ["movie_watch_count", "movie_count"]
     .map(h => headers.indexOf(h)).find(i => i !== -1) ?? -1;
-  const seasonIdx = headers.indexOf("season_number");
-  const episodeIdx = headers.indexOf("episode_number");
+  const seasonIdx = ["season_number", "season", "season_num", "seasonnumber"]
+    .map(h => headers.indexOf(h)).find(i => i !== -1) ?? -1;
+  const episodeIdx = ["episode_number", "episode", "episode_num", "episodenumber", "ep_number"]
+    .map(h => headers.indexOf(h)).find(i => i !== -1) ?? -1;
   const dateIdx = ["created_at", "watched_at", "watched_date", "watch_date", "updated_at", "most_recent_ep_watched", "followed_at", "date"]
     .map(h => headers.indexOf(h))
     .find(idx => idx !== -1);
