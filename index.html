@@ -2956,6 +2956,11 @@ function parseCSV(text) {
   const movieDates = {};
   // seriesEpisodes[seriesName][seasonNumber] = Set of watched episode numbers
   const seriesEpisodes = {};
+  // Every series/movie name seen in the CSV, even rows with 0 watched
+  // episodes - without this, a 0-episode series never appears in
+  // seriesMap or seriesEpisodes and gets silently dropped from the import.
+  const seriesSeen = new Set();
+  const moviesSeen = new Set();
 
   for (let i = 1; i < lines.length; i++) {
     if (!lines[i].trim()) continue;
@@ -2979,6 +2984,7 @@ function parseCSV(text) {
     let rowDate = dateIdx !== undefined ? parseFlexibleDate(cols[dateIdx]) : null;
 
     if (seriesName) {
+      seriesSeen.add(seriesName);
       if (rowDate && (!seriesDates[seriesName] || rowDate > seriesDates[seriesName])) {
         seriesDates[seriesName] = rowDate;
       }
@@ -3002,6 +3008,7 @@ function parseCSV(text) {
     }
 
     if (movieName) {
+      moviesSeen.add(movieName);
       if (rowDate && (!movieDates[movieName] || rowDate > movieDates[movieName])) {
         movieDates[movieName] = rowDate;
       }
@@ -3014,7 +3021,7 @@ function parseCSV(text) {
   let updated = 0;
   let skipped = 0;
 
-  const allSeriesNames = new Set([...Object.keys(seriesMap), ...Object.keys(seriesEpisodes)]);
+  const allSeriesNames = seriesSeen;
 
   for (const name of allSeriesNames) {
     const episodesBySeason = seriesEpisodes[name];
