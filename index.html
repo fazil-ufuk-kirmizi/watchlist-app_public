@@ -2080,6 +2080,25 @@ function scheduleCloudSync() {
   cloudSyncTimer = setTimeout(() => pushItemsToCloud(), 1200);
 }
 
+// A debounced push scheduled by scheduleCloudSync() can be silently lost if
+// the tab is closed, navigated away from, or backgrounded (mobile screen
+// lock, app switch) before the 1200ms timer fires - setTimeout is simply
+// cancelled/suspended, with no error and no toast. The change stays queued
+// locally (STORAGE_UNSYNCED) and self-heals next time this same device
+// reopens the app, but until then it's invisible on every other device.
+// Flush immediately, bypassing the debounce, the moment the tab is hidden
+// or about to unload, so a same-second edit-then-close doesn't get stranded.
+function flushPendingCloudSync() {
+  if (!cloudSyncTimer) return;
+  clearTimeout(cloudSyncTimer);
+  cloudSyncTimer = null;
+  pushItemsToCloud();
+}
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) flushPendingCloudSync();
+});
+window.addEventListener("pagehide", flushPendingCloudSync);
+
 // Firestore rejects any field whose value is `undefined` (unlike
 // localStorage/JSON.stringify, which just drops it). A round-trip through
 // JSON strips undefined values automatically, giving us a safe payload.
