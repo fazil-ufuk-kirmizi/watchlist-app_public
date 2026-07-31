@@ -3044,7 +3044,23 @@ function parseCSV(text) {
 
   for (const name of allSeriesNames) {
     const episodesBySeason = seriesEpisodes[name];
-    const existing = items.find(i => i.type === "series" && i.title.toLowerCase() === name.toLowerCase());
+
+    // Consolidate ALL matching duplicate entries for this title (not just
+    // the first one found) - old imports can leave more than one entry for
+    // the same series (e.g. one enriched with an imdbID, one without), and
+    // updating only the first-found copy left a stale duplicate elsewhere
+    // in the list with the wrong status.
+    const dupes = items.filter(i => i.type === "series" && i.title.toLowerCase() === name.toLowerCase());
+    let existing = dupes[0];
+    if (dupes.length > 1) {
+      for (let k = 1; k < dupes.length; k++) existing = mergeItemPair(existing, dupes[k]);
+      const firstIdx = items.indexOf(dupes[0]);
+      items[firstIdx] = existing;
+      for (let k = 1; k < dupes.length; k++) {
+        const idx = items.indexOf(dupes[k]);
+        if (idx !== -1) items.splice(idx, 1);
+      }
+    }
 
     // A series with no watched episodes at all (watch_count is 0/missing
     // AND no per-episode rows) hasn't actually been watched - import it
