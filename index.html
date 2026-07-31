@@ -2893,9 +2893,14 @@ function parseCSV(text) {
   const movieCountIdx = headers.indexOf("movie_watch_count");
   const seasonIdx = headers.indexOf("season_number");
   const episodeIdx = headers.indexOf("episode_number");
+  const dateIdx = ["created_at", "watched_at", "watched_date", "updated_at", "date"]
+    .map(h => headers.indexOf(h))
+    .find(idx => idx !== -1);
 
   const seriesMap = {};
   const movieMap = {};
+  const seriesDates = {};
+  const movieDates = {};
   // seriesEpisodes[seriesName][seasonNumber] = Set of watched episode numbers
   const seriesEpisodes = {};
 
@@ -2906,7 +2911,16 @@ function parseCSV(text) {
     const seriesName = seriesIdx !== -1 ? cols[seriesIdx] : "";
     const movieName = movieIdx !== -1 ? cols[movieIdx] : "";
 
+    let rowDate = null;
+    if (dateIdx !== undefined) {
+      const parsed = new Date(cols[dateIdx]);
+      if (!isNaN(parsed.getTime())) rowDate = parsed;
+    }
+
     if (seriesName) {
+      if (rowDate && (!seriesDates[seriesName] || rowDate > seriesDates[seriesName])) {
+        seriesDates[seriesName] = rowDate;
+      }
       const epCount = parseInt(cols[epCountIdx]) || 0;
       if (epCount > 0) {
         if (!seriesMap[seriesName]) seriesMap[seriesName] = 0;
@@ -2927,6 +2941,9 @@ function parseCSV(text) {
     }
 
     if (movieName) {
+      if (rowDate && (!movieDates[movieName] || rowDate > movieDates[movieName])) {
+        movieDates[movieName] = rowDate;
+      }
       const movieCount = parseInt(cols[movieCountIdx]) || 0;
       if (!movieMap[movieName]) movieMap[movieName] = movieCount;
     }
@@ -2963,8 +2980,13 @@ function parseCSV(text) {
       }
       if (existing.status !== "watched") {
         existing.status = "watched";
-        existing.watchedDate = existing.watchedDate || new Date().toISOString();
         gotNewData = true;
+      }
+      if (seriesDates[name]) {
+        existing.watchedDate = seriesDates[name].toISOString();
+        gotNewData = true;
+      } else if (!existing.watchedDate) {
+        existing.watchedDate = new Date().toISOString();
       }
       if (gotNewData) updated++; else skipped++;
       continue;
@@ -2987,14 +3009,21 @@ function parseCSV(text) {
       runtime: null,
       type: "series",
       status: "watched",
+      watchedDate: seriesDates[name] ? seriesDates[name].toISOString() : new Date().toISOString(),
       watchedEpisodes: watchedEpisodes
     });
     added++;
   }
 
   for (const name in movieMap) {
-    if (items.some(i => i.type === "movie" && i.title.toLowerCase() === name.toLowerCase())) {
-      skipped++;
+    const existingMovie = items.find(i => i.type === "movie" && i.title.toLowerCase() === name.toLowerCase());
+    if (existingMovie) {
+      if (movieDates[name]) {
+        existingMovie.watchedDate = movieDates[name].toISOString();
+        updated++;
+      } else {
+        skipped++;
+      }
       continue;
     }
     items.push({
@@ -3006,7 +3035,8 @@ function parseCSV(text) {
       plot: "",
       runtime: null,
       type: "movie",
-      status: "watched"
+      status: "watched",
+      watchedDate: movieDates[name] ? movieDates[name].toISOString() : new Date().toISOString()
     });
     added++;
   }
