@@ -2883,17 +2883,70 @@ function splitCSVLine(line) {
   return result.map(c => c.trim());
 }
 
-function parseCSV(text) {
-  const lines = text.trim().split(/\r?\n/);
-  const headers = splitCSVLine(lines[0]).map(h => h.toLowerCase());
+// Strips a UTF-8 BOM some spreadsheet tools (Excel) prepend to the first
+// header cell; left in place it breaks exact header-name matching for
+// whichever column happens to be first (e.g. "updated_at" becomes
+// "\uFEFFupdated_at" and indexOf("updated_at") silently fails).
+function stripBOM(text) {
+  return text.charCodeAt(0) === 0xFEFF ? text.slice(1) : text;
+}
 
-  const seriesIdx = headers.indexOf("series_name");
-  const movieIdx = headers.indexOf("movie_name");
+// new Date("2021-02-15 18:51:38") (space instead of "T") is NOT a
+// standard ISO format - some engines parse it fine, others return
+// Invalid Date. Parse the common "YYYY-MM-DD HH:mm:ss" / "YYYY-MM-DD"
+// shapes explicitly instead of trusting the native parser alone.
+function parseFlexibleDate(raw) {
+  if (!raw) return null;
+  const str = raw.trim();
+  if (!str) return null;
+
+  let d = new Date(str);
+  if (!isNaN(d.getTime())) return d;
+
+  let m = str.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/);
+  if (m) {
+    d = new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]);
+    if (!isNaN(d.getTime())) return d;
+  }
+
+  m = str.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (m) {
+    d = new Date(+m[1], +m[2] - 1, +m[3]);
+    if (!isNaN(d.getTime())) return d;
+  }
+
+  return null;
+}
+
+function parseCSV(text) {
+  const lines = stripBOM(text).trim().split(/\r?\n/);
+  const headers = splitCSVLine(lines[0]).map(h => h.toLowerCase().trim());
+
+  // Some exports (e.g. TV Time-style Firestore dumps) don't have separate
+  // series_name/movie_name columns at all - just a single name/title
+  // column plus a type/entity_type column that says "...episode-series"
+  // or "...movie". Try the dedicated columns first, then fall back to a
+  // generic name column disambiguated by the type column, then finally
+  // to the last column (where such exports tend to dump the title).
+  const seriesIdx = ["series_name", "series_title", "show_name"]
+    .map(h => headers.indexOf(h)).find(i => i !== -1);
+  const movieIdx = ["movie_name", "movie_title", "film_name"]
+    .map(h => headers.indexOf(h)).find(i => i !== -1);
+  const genericNameIdx = ["title", "name", "program_name"]
+    .map(h => headers.indexOf(h)).find(i => i !== -1);
+  const typeIdx = ["type", "entity_type"]
+    .map(h => headers.indexOf(h)).find(i => i !== -1);
+
+  const useTypeBasedName = seriesIdx === undefined && movieIdx === undefined;
+  const fallbackNameIdx = useTypeBasedName
+    ? (genericNameIdx !== undefined ? genericNameIdx : headers.length - 1)
+    : undefined;
+
   const epCountIdx = headers.indexOf("watch_count");
   const movieCountIdx = headers.indexOf("movie_watch_count");
   const seasonIdx = headers.indexOf("season_number");
   const episodeIdx = headers.indexOf("episode_number");
-  const dateIdx = ["created_at", "watched_at", "watched_date", "updated_at", "date"]
+  const dateIdx = ["created_at", "watched_at", "watched_date", "watch_date", "updated_at", "most_recent_ep_watched", "followed_at", "date"]
     .map(h => headers.indexOf(h))
     .find(idx => idx !== -1);
 
@@ -2908,14 +2961,22 @@ function parseCSV(text) {
     if (!lines[i].trim()) continue;
     const cols = splitCSVLine(lines[i]);
 
-    const seriesName = seriesIdx !== -1 ? cols[seriesIdx] : "";
-    const movieName = movieIdx !== -1 ? cols[movieIdx] : "";
-
-    let rowDate = null;
-    if (dateIdx !== undefined) {
-      const parsed = new Date(cols[dateIdx]);
-      if (!isNaN(parsed.getTime())) rowDate = parsed;
+    let seriesName = "";
+    let movieName = "";
+    if (!useTypeBasedName) {
+      seriesName = seriesIdx !== undefined ? cols[seriesIdx] : "";
+      movieName = movieIdx !== undefined ? cols[movieIdx] : "";
+    } else {
+      const typeVal = typeIdx !== undefined ? (cols[typeIdx] || "") : "";
+      const rawName = fallbackNameIdx !== undefined ? cols[fallbackNameIdx] : "";
+      if (/movie/i.test(typeVal)) {
+        movieName = rawName;
+      } else {
+        seriesName = rawName;
+      }
     }
+
+    let rowDate = dateIdx !== undefined ? parseFlexibleDate(cols[dateIdx]) : null;
 
     if (seriesName) {
       if (rowDate && (!seriesDates[seriesName] || rowDate > seriesDates[seriesName])) {
