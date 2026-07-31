@@ -3068,9 +3068,18 @@ function parseCSV(text) {
         } else if (!existing.watchedDate) {
           existing.watchedDate = new Date().toISOString();
         }
-      } else if (!existing.status) {
-        existing.status = "towatch";
-        gotNewData = true;
+      } else {
+        // This CSV row shows 0 watched episodes. Only correct the item to
+        // "towatch" if there's no actual evidence anywhere (episode count,
+        // recorded watched episodes) that it was really watched - otherwise
+        // this branch would wrongly demote something genuinely watched.
+        const hasRealEvidence = (parseInt(existing.episodes) > 0) ||
+          (existing.watchedEpisodes && Object.values(existing.watchedEpisodes).some(arr => Array.isArray(arr) && arr.length > 0));
+        if (!hasRealEvidence && existing.status !== "towatch") {
+          existing.status = "towatch";
+          existing.watchedDate = undefined;
+          gotNewData = true;
+        }
       }
       if (gotNewData) updated++; else skipped++;
       continue;
