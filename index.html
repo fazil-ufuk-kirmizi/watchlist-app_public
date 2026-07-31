@@ -1518,6 +1518,8 @@
           <span id="accountEmailLabel">Giriş yapan: <strong id="accountEmailValue"></strong></span>
         </div>
         <button class="settings-save" id="logoutBtn">Çıkış Yap</button>
+        <button class="settings-save" id="cloudSyncNow" style="margin-top:8px;">Şimdi Yedekle</button>
+        <p id="cloudSyncStatus" style="margin:10px 0 0 0; font-size:12px; color:var(--text-dim);"></p>
         <div class="settings-divider"></div>
         <h4 id="langSectionTitle">Language</h4>
         <div class="lang-switch">
@@ -2614,6 +2616,26 @@ document.getElementById("ghSettingsSave").addEventListener("click", () => {
 
 document.getElementById("ghSyncNow").addEventListener("click", () => {
   syncToGithub(true);
+});
+
+document.getElementById("cloudSyncNow").addEventListener("click", async () => {
+  if (!firebaseAvailable || !currentUser) {
+    toast("Bulut yedekleme için giriş yapmalısın.", true);
+    return;
+  }
+  const statusEl = document.getElementById("cloudSyncStatus");
+  statusEl.textContent = "Yedekleniyor...";
+  clearTimeout(cloudSyncTimer);
+  cloudSyncTimer = null;
+  pendingLocalWrite = true;
+  // pushItemsToCloud() reports its own failures via toast() and never
+  // rejects, so success/failure here is read from pendingLocalWrite
+  // (it only clears back to false once the write actually lands).
+  await pushItemsToCloud();
+  statusEl.textContent = pendingLocalWrite
+    ? "Yedekleme başarısız oldu, tekrar deneniyor..."
+    : `Son yedekleme: ${new Date().toLocaleString("tr-TR")}`;
+  if (!pendingLocalWrite) toast("Bulut yedekleme tamamlandı.");
 });
 
 document.getElementById("apiKeySave").addEventListener("click", () => {
