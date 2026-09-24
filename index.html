@@ -1542,6 +1542,11 @@
         </label>
         <input type="file" id="csvInput" accept=".csv" hidden>
         <div class="settings-divider"></div>
+        <h4 id="exportSectionTitle">Dışa Aktar</h4>
+        <p id="exportSectionDesc">Diziler Excel dosyası olarak iner. Filmler, Letterboxd içe aktarma formatında iki ayrı CSV olarak iner: izlenenler ve watchlist.</p>
+        <button class="settings-save" id="exportSeriesBtn">Dizileri Dışa Aktar (Excel)</button>
+        <button class="settings-save" id="exportMoviesBtn" style="margin-top:8px;">Filmleri Dışa Aktar (Letterboxd CSV)</button>
+        <div class="settings-divider"></div>
         <h4 id="ghSectionTitle">GitHub Yedekleme</h4>
         <p id="ghSectionDesc">Her değişiklikte listen otomatik olarak GitHub reponda bir Excel dosyasına yedeklenir. Bilgiler sadece bu tarayıcıda saklanır.</p>
         <div class="row">
@@ -1662,7 +1667,7 @@ let cloudUnsubscribe = null;
 let cloudSyncTimer = null;
 let applyingRemoteUpdate = false;
 let pendingLocalWrite = false;
-let authMode = "login"; // "login" | "register"
+let authMode = "login";
 
 const STRINGS = {
   tr: {
@@ -1754,7 +1759,16 @@ const STRINGS = {
     ghSyncSuccess: (date) => `Son yedekleme: ${date}`,
     ghSyncError: (msg) => `Yedekleme başarısız: ${msg}`,
     ghRateLimited: (time) => `GitHub istek sınırına ulaşıldı. Yedekleme otomatik olarak ${time} itibarıyla tekrar denenecek.`,
-    ghNotConfigured: "Önce GitHub ayarlarını doldurup kaydet."
+    ghNotConfigured: "Önce GitHub ayarlarını doldurup kaydet.",
+    exportSectionTitle: "Dışa Aktar",
+    exportSectionDesc: "Diziler Excel dosyası olarak iner. Filmler, Letterboxd içe aktarma formatında iki ayrı CSV olarak iner: izlenenler ve watchlist.",
+    exportSeriesBtn: "Dizileri Dışa Aktar (Excel)",
+    exportMoviesBtn: "Filmleri Dışa Aktar (Letterboxd CSV)",
+    noSeriesToExport: "Dışa aktarılacak dizi yok.",
+    noMoviesToExport: "Dışa aktarılacak film yok.",
+    seriesExportedToast: (count) => `${count} dizi Excel dosyasına aktarıldı.`,
+    moviesExportedToast: (watched, watchlist) => `${watched} izlenen ve ${watchlist} izlemek istenen film aktarıldı.`,
+    exportFailed: (msg) => `Dışa aktarma başarısız: ${msg}`
   },
   en: {
     appTitle: "My Watch List",
@@ -1845,7 +1859,16 @@ const STRINGS = {
     ghSyncSuccess: (date) => `Last backup: ${date}`,
     ghSyncError: (msg) => `Backup failed: ${msg}`,
     ghRateLimited: (time) => `GitHub rate limit reached. The backup will automatically retry at ${time}.`,
-    ghNotConfigured: "Fill in and save the GitHub settings first."
+    ghNotConfigured: "Fill in and save the GitHub settings first.",
+    exportSectionTitle: "Export",
+    exportSectionDesc: "Series download as an Excel file. Movies download as two Letterboxd-format CSV files: watched films and watchlist.",
+    exportSeriesBtn: "Export Series (Excel)",
+    exportMoviesBtn: "Export Movies (Letterboxd CSV)",
+    noSeriesToExport: "There are no series to export.",
+    noMoviesToExport: "There are no movies to export.",
+    seriesExportedToast: (count) => `${count} series exported to Excel.`,
+    moviesExportedToast: (watched, watchlist) => `Exported ${watched} watched and ${watchlist} want-to-watch movies.`,
+    exportFailed: (msg) => `Export failed: ${msg}`
   }
 };
 
@@ -1882,6 +1905,10 @@ function applyLanguage() {
   document.getElementById("apiSectionDesc").textContent = t("apiSectionDesc");
   document.getElementById("apiKeyInput").placeholder = t("apiKeyPlaceholder");
   document.getElementById("apiKeySave").textContent = t("save");
+  document.getElementById("exportSectionTitle").textContent = t("exportSectionTitle");
+  document.getElementById("exportSectionDesc").textContent = t("exportSectionDesc");
+  document.getElementById("exportSeriesBtn").textContent = t("exportSeriesBtn");
+  document.getElementById("exportMoviesBtn").textContent = t("exportMoviesBtn");
   document.getElementById("ghSectionTitle").textContent = t("ghSectionTitle");
   document.getElementById("ghSectionDesc").textContent = t("ghSectionDesc");
   document.getElementById("ghTokenInput").placeholder = t("ghTokenPlaceholder");
@@ -1947,10 +1974,6 @@ function showConfirm(message) {
   ]).then(v => !!v);
 }
 
-// Items with an imdbID get a stable id derived from it, so the same title
-// always maps to the same Firestore doc no matter which device added it.
-// This is what prevents two devices from creating two separate cloud docs
-// for the same movie/series.
 function canonicalId(item) {
   return item.imdbID ? `imdb-${item.imdbID}` : item.id;
 }
@@ -1959,14 +1982,9 @@ function itemKey(item) {
   return item.imdbID ? `imdb:${item.imdbID}` : `t:${item.type}:${(item.title || "").toLowerCase()}`;
 }
 
-// Collapses items that refer to the same title (matched by imdbID, or by
-// type+title when no imdbID is present) into a single entry, keeping the
-// most complete data. Used to clean up duplicates that can appear when
-// two devices/tabs add or sync the same title at nearly the same time.
 function mergeItemPair(existing, incoming) {
   const merged = { ...existing };
 
-  // For plain fields, only take the incoming value if the existing one is empty.
   Object.keys(incoming).forEach(key => {
     const val = incoming[key];
     const isEmpty = val === undefined || val === null || val === "";
@@ -1975,7 +1993,6 @@ function mergeItemPair(existing, incoming) {
     if (current === undefined || current === null || current === "") merged[key] = val;
   });
 
-  // Union the watched-episode lists per season, don't let one copy replace the other.
   const watchedEpisodes = {};
   new Set([...Object.keys(existing.watchedEpisodes || {}), ...Object.keys(incoming.watchedEpisodes || {})])
     .forEach(season => {
@@ -1987,11 +2004,6 @@ function mergeItemPair(existing, incoming) {
 
   const mergedType = existing.type || incoming.type;
   if (mergedType === "series") {
-    // A "watched" label on a series only counts if it's backed by real
-    // evidence (an actual episode count or recorded watched episodes).
-    // Otherwise a stale "watched" copy (e.g. from an earlier import bug)
-    // would keep winning over a correctly re-imported "towatch" copy every
-    // time duplicates get merged on load/sync.
     const hasEvidence = Object.values(watchedEpisodes).some(arr => arr.length > 0) ||
       (parseInt(existing.episodes) > 0) || (parseInt(incoming.episodes) > 0);
     merged.status = hasEvidence
@@ -2006,7 +2018,6 @@ function mergeItemPair(existing, incoming) {
   }
   merged.watchedDate = merged.status === "watched" ? (existing.watchedDate || incoming.watchedDate) : undefined;
 
-  // Keep whichever copy's season episode list is more complete per season.
   const seasonCache = {};
   new Set([...Object.keys(existing.seasonCache || {}), ...Object.keys(incoming.seasonCache || {})])
     .forEach(season => {
@@ -2067,14 +2078,6 @@ function saveItems() {
   if (!applyingRemoteUpdate) scheduleCloudSync();
 }
 
-// ---- Firebase Auth + Firestore Realtime Sync ----
-// Each signed-in user's watchlist lives at watchlists/{uid} in Firestore.
-// On sign-in we do a one-time fetch to decide whether to adopt the cloud
-// copy or upload the local one (first login on a fresh account), then
-// attach a realtime listener so changes on other devices arrive live.
-// Local writes set `applyingRemoteUpdate` while re-rendering from a
-// snapshot so we don't immediately write the same data straight back.
-
 function scheduleCloudSync() {
   if (!firebaseAvailable || !currentUser) return;
   pendingLocalWrite = true;
@@ -2082,14 +2085,6 @@ function scheduleCloudSync() {
   cloudSyncTimer = setTimeout(() => pushItemsToCloud(), 1200);
 }
 
-// A debounced push scheduled by scheduleCloudSync() can be silently lost if
-// the tab is closed, navigated away from, or backgrounded (mobile screen
-// lock, app switch) before the 1200ms timer fires - setTimeout is simply
-// cancelled/suspended, with no error and no toast. The change stays queued
-// locally (STORAGE_UNSYNCED) and self-heals next time this same device
-// reopens the app, but until then it's invisible on every other device.
-// Flush immediately, bypassing the debounce, the moment the tab is hidden
-// or about to unload, so a same-second edit-then-close doesn't get stranded.
 function flushPendingCloudSync() {
   if (!cloudSyncTimer) return;
   clearTimeout(cloudSyncTimer);
@@ -2101,9 +2096,6 @@ document.addEventListener("visibilitychange", () => {
 });
 window.addEventListener("pagehide", flushPendingCloudSync);
 
-// Firestore rejects any field whose value is `undefined` (unlike
-// localStorage/JSON.stringify, which just drops it). A round-trip through
-// JSON strips undefined values automatically, giving us a safe payload.
 function sanitizeForFirestore(data) {
   return JSON.parse(JSON.stringify(data));
 }
@@ -2179,7 +2171,6 @@ async function startCloudSync(user) {
       } else {
         const legacySnap = await docRef.get();
         if (legacySnap.exists && Array.isArray(legacySnap.data().items) && legacySnap.data().items.length) {
-          // Legacy single-document format: adopt it locally, then migrate to per-item docs.
           applyingRemoteUpdate = true;
           items = dedupeItems(legacySnap.data().items);
           items.forEach(i => { if (!i.status) i.status = "watched"; });
@@ -2190,8 +2181,6 @@ async function startCloudSync(user) {
           await docRef.set({ items: firebase.firestore.FieldValue.delete() }, { merge: true });
           enrichItemsWithOMDb();
         } else {
-          // First time this account has synced: seed the cloud with whatever
-          // is currently in this browser (e.g. items added before logging in).
           await pushItemsToCloud();
         }
       }
@@ -2332,10 +2321,6 @@ if (firebaseAvailable) {
     }
   });
 } else {
-  // Firebase SDK didn't load (blocked by an ad-blocker/VPN, or offline).
-  // Don't let that break the rest of the app: skip the login gate
-  // entirely and fall back to local-only mode (localStorage + GitHub
-  // backup keep working as before).
   document.getElementById("authOverlay").style.display = "none";
   const accountSection = document.getElementById("accountSectionTitle");
   if (accountSection) {
@@ -2346,21 +2331,6 @@ if (firebaseAvailable) {
     document.getElementById("logoutBtn").style.display = "none";
   }
 }
-
-// ---- GitHub Excel Backup ----
-// Every time the list changes, we (re)build an .xlsx snapshot of the
-// current watchlist in-browser (via SheetJS) and push it to a file in a
-// GitHub repo through the Contents API. Calls are debounced so a burst of
-// rapid changes (e.g. marking several episodes watched) results in a
-// single commit instead of one per change.
-//
-// Rate-limit handling: GitHub's REST API allows 5000 authenticated
-// requests/hour. Each sync uses at most 2 (a GET for the file's current
-// SHA, then a PUT to write it). We track the x-ratelimit-remaining /
-// x-ratelimit-reset headers GitHub sends back on every response. If we're
-// down to our last request or GitHub tells us we're rate-limited (403 with
-// remaining=0, or 429), we stop calling the API and automatically retry
-// once the limit window resets, so the backup still happens, just later.
 
 let githubSyncTimer = null;
 let githubSyncInFlight = false;
@@ -2419,9 +2389,6 @@ function buildWatchlistWorkbookBase64() {
   return XLSX.write(wb, { type: "base64", bookType: "xlsx" });
 }
 
-// Debounce rapid successive changes into a single request. 5s gives a
-// generous window for e.g. marking a whole season watched in one go
-// without firing a request per episode.
 function scheduleGithubSync() {
   if (!isGithubConfigured()) return;
   clearTimeout(githubSyncTimer);
@@ -2453,9 +2420,6 @@ function getRetryAtFromResponse(res) {
   return Date.now() + 60000;
 }
 
-// Queues a single automatic retry for the moment GitHub's rate-limit
-// window resets, so a blocked backup still completes on its own instead
-// of silently failing.
 function scheduleRateLimitRetry(resumeAtMs, manual) {
   githubRateLimitResetAt = resumeAtMs;
   const label = t("ghRateLimited")(formatRetryTime(resumeAtMs));
@@ -2479,9 +2443,6 @@ async function syncToGithub(manual) {
     githubSyncQueued = true;
     return;
   }
-  // Already known to be rate-limited and the window hasn't reset yet:
-  // don't spend a request finding that out again, just (re)confirm the
-  // retry is queued for when it resets.
   if (githubRateLimitRemaining !== null && githubRateLimitRemaining <= 1 && Date.now() < githubRateLimitResetAt) {
     scheduleRateLimitRetry(githubRateLimitResetAt, manual);
     return;
@@ -2498,8 +2459,6 @@ async function syncToGithub(manual) {
       "Accept": "application/vnd.github+json"
     };
 
-    // Look up the current file's SHA (needed to update an existing file).
-    // A 404 just means the file doesn't exist yet, which is fine.
     let sha = undefined;
     const getRes = await fetch(`${apiBase}?ref=${encodeURIComponent(cfg.branch)}`, { headers });
     readRateLimitHeaders(getRes);
@@ -2628,9 +2587,6 @@ document.getElementById("cloudSyncNow").addEventListener("click", async () => {
   clearTimeout(cloudSyncTimer);
   cloudSyncTimer = null;
   pendingLocalWrite = true;
-  // pushItemsToCloud() reports its own failures via toast() and never
-  // rejects, so success/failure here is read from pendingLocalWrite
-  // (it only clears back to false once the write actually lands).
   await pushItemsToCloud();
   statusEl.textContent = pendingLocalWrite
     ? "Yedekleme başarısız oldu, tekrar deneniyor..."
@@ -2649,9 +2605,6 @@ document.getElementById("apiKeySave").addEventListener("click", () => {
   omdbLimitReached = false;
   try { localStorage.removeItem(STORAGE_OMDB_LIMIT_HIT_AT); } catch (err) {}
 
-  // Earlier "not found" results may actually have been caused by the
-  // previous key hitting its rate limit rather than a genuine no-match.
-  // Clear those out so this new key gets a real shot at them.
   let clearedAny = false;
   for (const cacheKey in omdbCache) {
     if (omdbCache[cacheKey] && omdbCache[cacheKey].Response === "False") {
@@ -2669,7 +2622,7 @@ document.getElementById("apiKeySave").addEventListener("click", () => {
 });
 
 const STORAGE_OMDB_LIMIT_HIT_AT = "watchlist.omdbLimitHitAt.v1";
-const OMDB_LIMIT_COOLDOWN_MS = 6 * 60 * 60 * 1000; // 6 hours
+const OMDB_LIMIT_COOLDOWN_MS = 6 * 60 * 60 * 1000;
 
 function handleOMDbLimit() {
   if (omdbLimitReached) return;
@@ -2941,18 +2894,10 @@ function splitCSVLine(line) {
   return result.map(c => c.trim());
 }
 
-// Strips a UTF-8 BOM some spreadsheet tools (Excel) prepend to the first
-// header cell; left in place it breaks exact header-name matching for
-// whichever column happens to be first (e.g. "updated_at" becomes
-// "\uFEFFupdated_at" and indexOf("updated_at") silently fails).
 function stripBOM(text) {
   return text.charCodeAt(0) === 0xFEFF ? text.slice(1) : text;
 }
 
-// new Date("2021-02-15 18:51:38") (space instead of "T") is NOT a
-// standard ISO format - some engines parse it fine, others return
-// Invalid Date. Parse the common "YYYY-MM-DD HH:mm:ss" / "YYYY-MM-DD"
-// shapes explicitly instead of trusting the native parser alone.
 function parseFlexibleDate(raw) {
   if (!raw) return null;
   const str = raw.trim();
@@ -2980,12 +2925,6 @@ function parseCSV(text) {
   const lines = stripBOM(text).trim().split(/\r?\n/);
   const headers = splitCSVLine(lines[0]).map(h => h.toLowerCase().trim());
 
-  // Some exports (e.g. TV Time-style Firestore dumps) don't have separate
-  // series_name/movie_name columns at all - just a single name/title
-  // column plus a type/entity_type column that says "...episode-series"
-  // or "...movie". Try the dedicated columns first, then fall back to a
-  // generic name column disambiguated by the type column, then finally
-  // to the last column (where such exports tend to dump the title).
   const seriesIdx = ["series_name", "series_title", "show_name"]
     .map(h => headers.indexOf(h)).find(i => i !== -1);
   const movieIdx = ["movie_name", "movie_title", "film_name"]
@@ -3016,11 +2955,7 @@ function parseCSV(text) {
   const movieMap = {};
   const seriesDates = {};
   const movieDates = {};
-  // seriesEpisodes[seriesName][seasonNumber] = Set of watched episode numbers
   const seriesEpisodes = {};
-  // Every series/movie name seen in the CSV, even rows with 0 watched
-  // episodes - without this, a 0-episode series never appears in
-  // seriesMap or seriesEpisodes and gets silently dropped from the import.
   const seriesSeen = new Set();
   const moviesSeen = new Set();
 
@@ -3056,10 +2991,6 @@ function parseCSV(text) {
         seriesMap[seriesName] += epCount;
       }
 
-      // Per-episode watch-history rows carry season_number/episode_number
-      // instead of ep_watch_count; this is what lets us reconstruct exactly
-      // which episodes of which season were watched (rewatches just add
-      // the same episode number again, harmless since we use a Set).
       const seasonNum = seasonIdx !== -1 ? parseInt(cols[seasonIdx]) : NaN;
       const episodeNum = episodeIdx !== -1 ? parseInt(cols[episodeIdx]) : NaN;
       if (!isNaN(seasonNum) && !isNaN(episodeNum)) {
@@ -3088,11 +3019,6 @@ function parseCSV(text) {
   for (const name of allSeriesNames) {
     const episodesBySeason = seriesEpisodes[name];
 
-    // Consolidate ALL matching duplicate entries for this title (not just
-    // the first one found) - old imports can leave more than one entry for
-    // the same series (e.g. one enriched with an imdbID, one without), and
-    // updating only the first-found copy left a stale duplicate elsewhere
-    // in the list with the wrong status.
     const dupes = items.filter(i => i.type === "series" && i.title.toLowerCase() === name.toLowerCase());
     let existing = dupes[0];
     if (dupes.length > 1) {
@@ -3105,9 +3031,6 @@ function parseCSV(text) {
       }
     }
 
-    // A series with no watched episodes at all (watch_count is 0/missing
-    // AND no per-episode rows) hasn't actually been watched - import it
-    // to the "want to watch" list instead of marking it watched.
     let watchedEpisodeCount = 0;
     if (episodesBySeason) {
       for (const seasonNum in episodesBySeason) watchedEpisodeCount += episodesBySeason[seasonNum].size;
@@ -3115,9 +3038,6 @@ function parseCSV(text) {
     const hasWatchedData = (seriesMap[name] || 0) > 0 || watchedEpisodeCount > 0;
 
     if (existing) {
-      // Item already in the list: merge in any newly-known watched
-      // episodes instead of skipping, so re-importing the same export
-      // (or a fresher one) fills in detail that was missing before.
       let gotNewData = false;
       if (episodesBySeason) {
         if (!existing.watchedEpisodes) existing.watchedEpisodes = {};
@@ -3134,8 +3054,6 @@ function parseCSV(text) {
         gotNewData = true;
       }
       if (hasWatchedData) {
-        // Only ever promotes towards "watched" - a 0-episode row from the
-        // CSV never demotes an item the person already marked watched.
         if (existing.status !== "watched") {
           existing.status = "watched";
           gotNewData = true;
@@ -3147,11 +3065,6 @@ function parseCSV(text) {
           existing.watchedDate = new Date().toISOString();
         }
       } else {
-        // This CSV row shows 0 watched episodes for this title - always
-        // move it to "want to watch", no matter what status it had before.
-        // Clear any leftover episode/episode-count evidence too, so a
-        // later duplicate merge (dedupeItems/mergeItemPair) doesn't see
-        // stale data and flip it back to "watched".
         if (existing.status !== "towatch" || existing.watchedDate || (existing.watchedEpisodes && Object.keys(existing.watchedEpisodes).length)) {
           existing.status = "towatch";
           existing.watchedDate = undefined;
@@ -3234,6 +3147,185 @@ document.getElementById("csvInput").addEventListener("change", (e) => {
   e.target.value = "";
 });
 
+const SERIES_SHEET_HEADER = [
+  "Title", "Year", "Status", "IMDb Rating", "Genre", "Runtime (min)",
+  "Total Seasons", "Total Episodes", "Watched Episodes", "Progress (%)",
+  "Watched Date", "IMDb ID"
+];
+
+const EPISODES_SHEET_HEADER = [
+  "Series", "Season", "Episode", "Episode Title", "IMDb Rating", "Released", "Series IMDb ID"
+];
+
+function formatExportDate(value) {
+  const date = new Date(value);
+  if (!value || isNaN(date.getTime())) return "";
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+function extractYear(value) {
+  const match = String(value || "").match(/\d{4}/);
+  return match ? match[0] : "";
+}
+
+function toNumberOrBlank(value) {
+  const number = parseFloat(value);
+  return isNaN(number) ? "" : number;
+}
+
+function compareByTitle(a, b) {
+  return (a.title || "").localeCompare(b.title || "");
+}
+
+function triggerDownload(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+function buildSeriesRows(seriesList) {
+  return seriesList.map(item => {
+    const isToWatch = item.status === "towatch";
+    const watchedCount = countWatchedEpisodes(item) || parseInt(item.episodes) || 0;
+    const totalEpisodes = typeof item.totalEpisodes === "number" ? item.totalEpisodes : "";
+    const progress = totalEpisodes ? Math.min(100, Math.round((watchedCount / totalEpisodes) * 100)) : "";
+    return [
+      item.title || "",
+      item.year || "",
+      isToWatch ? "Want to Watch" : "Watched",
+      toNumberOrBlank(item.rating),
+      item.genre || "",
+      item.runtime || "",
+      item.totalSeasons || "",
+      totalEpisodes,
+      watchedCount,
+      progress,
+      isToWatch ? "" : formatExportDate(item.watchedDate),
+      item.imdbID || ""
+    ];
+  });
+}
+
+function buildEpisodeRows(seriesList) {
+  const rows = [];
+  seriesList.forEach(item => {
+    const watchedBySeason = item.watchedEpisodes || {};
+    Object.keys(watchedBySeason)
+      .map(Number)
+      .filter(season => !isNaN(season))
+      .sort((a, b) => a - b)
+      .forEach(season => {
+        const cachedEpisodes = (item.seasonCache && item.seasonCache[season]) || [];
+        const episodeNumbers = (watchedBySeason[season] || []).map(Number).sort((a, b) => a - b);
+        episodeNumbers.forEach(episodeNumber => {
+          const info = cachedEpisodes.find(ep => parseInt(ep.Episode) === episodeNumber) || {};
+          rows.push([
+            item.title || "",
+            season,
+            episodeNumber,
+            info.Title || "",
+            toNumberOrBlank(info.imdbRating),
+            info.Released && info.Released !== "N/A" ? info.Released : "",
+            item.imdbID || ""
+          ]);
+        });
+      });
+  });
+  return rows;
+}
+
+function exportSeries() {
+  const seriesList = items.filter(item => item.type === "series").sort(compareByTitle);
+  if (!seriesList.length) {
+    toast(t("noSeriesToExport"), true);
+    return;
+  }
+  try {
+    const workbook = XLSX.utils.book_new();
+
+    const seriesSheet = XLSX.utils.aoa_to_sheet([SERIES_SHEET_HEADER, ...buildSeriesRows(seriesList)]);
+    seriesSheet["!cols"] = [
+      { wch: 34 }, { wch: 11 }, { wch: 14 }, { wch: 12 }, { wch: 28 }, { wch: 14 },
+      { wch: 14 }, { wch: 15 }, { wch: 17 }, { wch: 13 }, { wch: 13 }, { wch: 12 }
+    ];
+    seriesSheet["!autofilter"] = { ref: seriesSheet["!ref"] };
+    XLSX.utils.book_append_sheet(workbook, seriesSheet, "Series");
+
+    const episodesSheet = XLSX.utils.aoa_to_sheet([EPISODES_SHEET_HEADER, ...buildEpisodeRows(seriesList)]);
+    episodesSheet["!cols"] = [
+      { wch: 34 }, { wch: 8 }, { wch: 9 }, { wch: 40 }, { wch: 12 }, { wch: 13 }, { wch: 14 }
+    ];
+    episodesSheet["!autofilter"] = { ref: episodesSheet["!ref"] };
+    XLSX.utils.book_append_sheet(workbook, episodesSheet, "Watched Episodes");
+
+    XLSX.writeFile(workbook, `watchlist-series-${formatExportDate(new Date())}.xlsx`);
+    toast(t("seriesExportedToast")(seriesList.length));
+  } catch (err) {
+    toast(t("exportFailed")(err.message || String(err)), true);
+  }
+}
+
+function escapeLetterboxdField(value) {
+  const text = value === undefined || value === null ? "" : String(value);
+  if (!/[",\r\n]/.test(text) && text === text.trim()) return text;
+  return `"${text.replace(/"/g, '\\"')}"`;
+}
+
+function buildLetterboxdCsv(movieList, includeWatchedDate) {
+  const header = ["imdbID", "Title", "Year", "Directors"];
+  if (includeWatchedDate) header.push("WatchedDate");
+  const lines = [header.join(",")];
+  movieList.forEach(item => {
+    const rawTitle = String(item.title || "");
+    const trailingYear = rawTitle.match(/\s*\((\d{4})\)\s*$/);
+    const fields = [
+      item.imdbID || "",
+      rawTitle.replace(/\s*\(\d{4}\)\s*$/, "").trim(),
+      extractYear(item.year) || (trailingYear ? trailingYear[1] : ""),
+      item.director || ""
+    ];
+    if (includeWatchedDate) fields.push(formatExportDate(item.watchedDate));
+    lines.push(fields.map(escapeLetterboxdField).join(","));
+  });
+  return lines.join("\r\n") + "\r\n";
+}
+
+function exportMovies() {
+  const movies = items.filter(item => item.type === "movie").sort(compareByTitle);
+  const watched = movies.filter(item => item.status !== "towatch");
+  const watchlist = movies.filter(item => item.status === "towatch");
+  if (!watched.length && !watchlist.length) {
+    toast(t("noMoviesToExport"), true);
+    return;
+  }
+  try {
+    const stamp = formatExportDate(new Date());
+    const files = [];
+    if (watched.length) {
+      files.push({ name: `letterboxd-watched-${stamp}.csv`, content: buildLetterboxdCsv(watched, true) });
+    }
+    if (watchlist.length) {
+      files.push({ name: `letterboxd-watchlist-${stamp}.csv`, content: buildLetterboxdCsv(watchlist, false) });
+    }
+    files.forEach((file, index) => {
+      const blob = new Blob([file.content], { type: "text/csv;charset=utf-8" });
+      setTimeout(() => triggerDownload(blob, file.name), index * 500);
+    });
+    toast(t("moviesExportedToast")(watched.length, watchlist.length));
+  } catch (err) {
+    toast(t("exportFailed")(err.message || String(err)), true);
+  }
+}
+
+document.getElementById("exportSeriesBtn").addEventListener("click", exportSeries);
+document.getElementById("exportMoviesBtn").addEventListener("click", exportMovies);
+
 function normalizeTurkish(text) {
   const map = { "ç": "c", "Ç": "C", "ğ": "g", "Ğ": "G", "ı": "i", "İ": "I", "ö": "o", "Ö": "O", "ş": "s", "Ş": "S", "ü": "u", "Ü": "U" };
   return text.replace(/[çÇğĞıİöÖşŞüÜ]/g, ch => map[ch]);
@@ -3283,10 +3375,6 @@ async function fetchOMDbData(title, type) {
   }
 
   const finalResult = fallback || { Response: "False" };
-  // Only cache genuine "not found" results. If we got here because we hit
-  // the rate limit (not because OMDb genuinely has no match), caching it
-  // would permanently poison this title even after the limit resets or a
-  // working key is added.
   if (!omdbLimitReached) {
     omdbCache[key] = finalResult;
     saveCache();
@@ -3367,9 +3455,6 @@ document.getElementById("genreFilter").addEventListener("change", () => {
   render(document.getElementById("liveSearch").value);
 });
 
-// Each section starts as a horizontally scrollable "drawer" (like TV Time);
-// clicking its header expands it into the full wrapping grid, and clicking
-// again collapses it back to the scrollable row.
 const sectionKeys = ["seriesWatched", "seriesToWatch", "movieWatched", "movieToWatch"];
 const expandedSections = {};
 sectionKeys.forEach(key => { expandedSections[key] = false; });
@@ -3572,10 +3657,6 @@ function renderEpisodeRatingChart(episodes, watched) {
   const box = document.getElementById("episodeChart");
   if (!box) return;
 
-  // ALL episode numbers in this season (rated or not) - this defines the axis
-  // range and the labels, so the axis always matches the full episode list
-  // below. Episodes without a rating simply won't get a dot/line, but they
-  // still occupy their correct slot on the axis instead of being skipped.
   const allNums = episodes
     .map(ep => parseInt(ep.Episode))
     .filter(n => !isNaN(n))
@@ -3586,7 +3667,6 @@ function renderEpisodeRatingChart(episodes, watched) {
     return;
   }
 
-  // Only rated episodes get a dot / are part of the line.
   const points = episodes
     .map(ep => ({ num: parseInt(ep.Episode), rating: parseFloat(ep.imdbRating) }))
     .filter(p => !isNaN(p.num) && !isNaN(p.rating))
@@ -3615,9 +3695,6 @@ function renderEpisodeRatingChart(episodes, watched) {
   }
   const rRange = maxR - minR;
 
-  // Axis range comes from the FULL episode list (allNums), not just the
-  // rated subset, so episode 1 or the last episode never silently drop out
-  // of the axis just because they lack a rating.
   const firstNum = allNums[0];
   const lastNum = allNums[allNums.length - 1];
   const numRange = Math.max(lastNum - firstNum, 1);
@@ -3681,12 +3758,6 @@ function renderEpisodeRatingChart(episodes, watched) {
     `;
   }
 
-  // Episodes that exist in the season but have NO rating (OMDb returned no
-  // imdbRating) don't get a colored dot on the line, so they'd otherwise
-  // just silently vanish - making a rated episode further along look like
-  // it's "3rd" when it's actually e.g. the 5th episode. To make that gap
-  // visible instead of invisible, draw a small hollow marker for them at
-  // their correct axis position.
   const ratedNumsSet = new Set(points.map(p => p.num));
   const unratedNums = allNums.filter(n => !ratedNumsSet.has(n));
   const baseline = chartH - pad.bottom;
@@ -3695,10 +3766,6 @@ function renderEpisodeRatingChart(episodes, watched) {
       <title>${n}. bölüm · ${t("epNoRating")}</title>
     </circle>`).join("");
 
-  // Labels: every REAL point on the chart is always labeled with its own
-  // true episode number directly beneath its own dot (never a number
-  // borrowed from a neighboring point). Additional numbers are sampled from
-  // the full episode range just to keep the axis readable on long seasons.
   const labelNums = new Set(points.map(p => p.num));
   const labelEvery = Math.max(1, Math.ceil(allNums.length / 10));
   allNums.forEach((n, i) => {
@@ -3724,9 +3791,6 @@ function renderEpisodeRatingChart(episodes, watched) {
   if (markerNeedsAnim) {
     const group = box.querySelector(".current-marker-anim");
     if (group) {
-      // Force layout so the browser registers the starting position before
-      // the transition is enabled, then move to the target on the next
-      // frame so it actually animates instead of jumping instantly.
       group.getBoundingClientRect();
       requestAnimationFrame(() => {
         group.style.transition = "transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)";
