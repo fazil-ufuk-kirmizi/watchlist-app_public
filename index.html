@@ -410,7 +410,7 @@
     font-weight: 700;
   }
 
-  input[type="text"], input[type="file"] {
+  input[type="text"], input[type="email"], input[type="password"], input[type="number"], input[type="url"], input[type="file"], textarea {
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid var(--border);
     color: var(--text);
@@ -422,7 +422,12 @@
     transition: var(--transition);
   }
 
-  input[type="text"]:focus {
+  textarea {
+    resize: vertical;
+    min-height: 80px;
+  }
+
+  input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focus, input[type="number"]:focus, input[type="url"]:focus, textarea:focus {
     outline: none;
     border-color: var(--primary);
     background: rgba(255, 255, 255, 0.06);
@@ -448,6 +453,11 @@
     transition: var(--transition);
     flex: 0 0 auto;
     max-width: 180px;
+  }
+
+  select option {
+    background: #141923;
+    color: var(--text);
   }
 
   select:focus {
@@ -586,8 +596,7 @@
     border-radius: 20px;
   }
 
-  .section-title::after {
-    content: "";
+  .section-line {
     flex: 1;
     height: 1px;
     background: linear-gradient(90deg, var(--border), transparent);
@@ -596,6 +605,36 @@
   .section-title:first-child {
     padding-top: 0;
     margin-top: 0;
+  }
+
+  .manual-add-btn {
+    background: rgba(255, 213, 74, 0.1);
+    color: var(--primary);
+    border: 1px solid rgba(255, 213, 74, 0.25);
+    padding: 8px 14px;
+    font-size: 12px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: var(--transition);
+    box-shadow: none;
+  }
+
+  .manual-add-btn:hover {
+    background: var(--primary-gradient);
+    color: #090B10;
+    border-color: transparent;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(255, 213, 74, 0.25);
+  }
+
+  .manual-add-btn svg {
+    width: 14px;
+    height: 14px;
   }
 
   .subsection-title {
@@ -609,6 +648,9 @@
     display: flex;
     align-items: center;
     gap: 12px;
+    cursor: pointer;
+    -webkit-user-select: none;
+    user-select: none;
   }
 
   .subsection-title .count {
@@ -619,12 +661,6 @@
     border: 1px solid var(--border);
     padding: 2px 10px;
     border-radius: 20px;
-  }
-
-  .subsection-title {
-    cursor: pointer;
-    -webkit-user-select: none;
-    user-select: none;
   }
 
   .drawer-chevron {
@@ -1403,6 +1439,57 @@
     background: rgba(255, 255, 255, 0.08);
   }
 
+  .manual-modal-box {
+    max-width: 540px;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  .manual-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+
+  .manual-modal-header h3 {
+    font-family: 'Manrope', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    margin: 0;
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .form-group.full {
+    grid-column: 1 / -1;
+  }
+
+  .form-group label {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-dim);
+    font-weight: 600;
+  }
+
+  .form-group select {
+    max-width: none;
+    width: 100%;
+  }
+
   .toast-container {
     position: fixed;
     bottom: 28px;
@@ -1473,6 +1560,7 @@
     .detail-poster { width: 96px; margin: 0 14px 14px 0; }
     .confirm-overlay { padding: 16px; }
     .confirm-box { padding: 20px; }
+    .form-grid { grid-template-columns: 1fr; }
     .toast-container { left: 16px; right: 16px; bottom: 16px; max-width: none; }
   }
 
@@ -1510,7 +1598,7 @@
     <div class="header-spacer"></div>
     <div class="settings-wrap">
       <button class="icon-btn" id="settingsBtn" title="OMDb API key ayarları" aria-label="Ayarlar">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82-.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
       </button>
       <div class="settings-pop" id="settingsPop">
         <h4 id="accountSectionTitle">Hesap</h4>
@@ -1588,13 +1676,29 @@
 </div>
 
 <main>
-  <h2 class="section-title"><span id="labelSeries">Diziler</span> <span class="count" id="seriesCount">0</span></h2>
+  <h2 class="section-title">
+    <span id="labelSeries">Diziler</span>
+    <span class="count" id="seriesCount">0</span>
+    <span class="section-line"></span>
+    <button type="button" class="manual-add-btn" id="addCustomSeriesBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+      <span id="labelAddCustomSeries">Dizi Ekle</span>
+    </button>
+  </h2>
   <h3 class="subsection-title" id="seriesWatchedHeader" data-section="seriesWatched"><span id="labelSeriesWatched">İzlenenler</span> <span class="count" id="seriesWatchedCount">0</span><svg class="drawer-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></h3>
   <div class="grid row-view" id="seriesWatchedGrid"></div>
   <h3 class="subsection-title" id="seriesToWatchHeader" data-section="seriesToWatch"><span id="labelSeriesToWatch">İzlemek İstiyorum</span> <span class="count" id="seriesToWatchCount">0</span><svg class="drawer-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></h3>
   <div class="grid row-view" id="seriesToWatchGrid"></div>
 
-  <h2 class="section-title"><span id="labelMovies">Filmler</span> <span class="count" id="movieCount">0</span></h2>
+  <h2 class="section-title">
+    <span id="labelMovies">Filmler</span>
+    <span class="count" id="movieCount">0</span>
+    <span class="section-line"></span>
+    <button type="button" class="manual-add-btn" id="addCustomMovieBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+      <span id="labelAddCustomMovie">Film Ekle</span>
+    </button>
+  </h2>
   <h3 class="subsection-title" id="movieWatchedHeader" data-section="movieWatched"><span id="labelMoviesWatched">İzlenenler</span> <span class="count" id="movieWatchedCount">0</span><svg class="drawer-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></h3>
   <div class="grid row-view" id="movieWatchedGrid"></div>
   <h3 class="subsection-title" id="movieToWatchHeader" data-section="movieToWatch"><span id="labelMoviesToWatch">İzlemek İstiyorum</span> <span class="count" id="movieToWatchCount">0</span><svg class="drawer-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></h3>
@@ -1615,6 +1719,79 @@
   <div class="confirm-box">
     <p id="confirmModalMessage"></p>
     <div class="confirm-actions" id="confirmModalActions"></div>
+  </div>
+</div>
+
+<div class="confirm-overlay" id="manualAddModal">
+  <div class="confirm-box manual-modal-box">
+    <div class="manual-modal-header">
+      <h3 id="manualModalTitle">Manuel Yapım Ekle</h3>
+      <button type="button" class="modal-close" id="manualModalClose" aria-label="Kapat">&times;</button>
+    </div>
+    <form id="manualAddForm">
+      <input type="hidden" id="manualType" value="series">
+      <div class="form-grid">
+        <div class="form-group full">
+          <label id="lblManualTitle" for="manualTitleInput">Başlık *</label>
+          <input type="text" id="manualTitleInput" required>
+        </div>
+        <div class="form-group">
+          <label id="lblManualYear" for="manualYearInput">Yıl</label>
+          <input type="text" id="manualYearInput" placeholder="2024">
+        </div>
+        <div class="form-group">
+          <label id="lblManualStatus" for="manualStatusInput">Durum</label>
+          <select id="manualStatusInput">
+            <option value="watched" id="optManualWatched">İzledim</option>
+            <option value="towatch" id="optManualToWatch">İzlemek İstiyorum</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label id="lblManualRating" for="manualRatingInput">IMDb Puanı</label>
+          <input type="number" step="0.1" min="0" max="10" id="manualRatingInput" placeholder="8.2">
+        </div>
+        <div class="form-group">
+          <label id="lblManualRuntime" for="manualRuntimeInput">Süre (dk)</label>
+          <input type="number" min="1" id="manualRuntimeInput" placeholder="45">
+        </div>
+        <div class="form-group" id="manualSeasonsGroup">
+          <label id="lblManualSeasons" for="manualSeasonsInput">Toplam Sezon</label>
+          <input type="number" min="1" id="manualSeasonsInput" placeholder="1">
+        </div>
+        <div class="form-group" id="manualTotalEpsGroup">
+          <label id="lblManualTotalEps" for="manualTotalEpsInput">Toplam Bölüm</label>
+          <input type="number" min="1" id="manualTotalEpsInput" placeholder="10">
+        </div>
+        <div class="form-group full" id="manualWatchedEpsGroup">
+          <label id="lblManualWatchedEps" for="manualWatchedEpsInput">İzlenen Bölüm Sayısı</label>
+          <input type="number" min="0" id="manualWatchedEpsInput" placeholder="0">
+        </div>
+        <div class="form-group full">
+          <label id="lblManualGenre" for="manualGenreInput">Tür (virgülle ayır)</label>
+          <input type="text" id="manualGenreInput" placeholder="Action, Sci-Fi">
+        </div>
+        <div class="form-group full">
+          <label id="lblManualPoster" for="manualPosterInput">Poster URL</label>
+          <input type="url" id="manualPosterInput" placeholder="https://...">
+        </div>
+        <div class="form-group">
+          <label id="lblManualDirector" for="manualDirectorInput">Yönetmen</label>
+          <input type="text" id="manualDirectorInput">
+        </div>
+        <div class="form-group">
+          <label id="lblManualActors" for="manualActorsInput">Oyuncular</label>
+          <input type="text" id="manualActorsInput">
+        </div>
+        <div class="form-group full">
+          <label id="lblManualPlot" for="manualPlotInput">Konu</label>
+          <textarea id="manualPlotInput" rows="3"></textarea>
+        </div>
+      </div>
+      <div class="confirm-actions">
+        <button type="button" class="btn-cancel" id="manualCancelBtn">Vazgeç</button>
+        <button type="submit" id="manualSaveBtn">Kaydet</button>
+      </div>
+    </form>
   </div>
 </div>
 
@@ -1688,6 +1865,25 @@ const STRINGS = {
     statMovieTime: "Film Süresi",
     labelSeries: "Diziler",
     labelMovies: "Filmler",
+    addCustomSeriesBtn: "Dizi Ekle",
+    addCustomMovieBtn: "Film Ekle",
+    manualModalTitleSeries: "Manuel Dizi Ekle",
+    manualModalTitleMovie: "Manuel Film Ekle",
+    lblManualTitle: "Başlık *",
+    lblManualYear: "Yıl",
+    lblManualStatus: "Durum",
+    lblManualRating: "IMDb Puanı",
+    lblManualRuntime: "Süre (dk)",
+    lblManualSeasons: "Toplam Sezon",
+    lblManualTotalEps: "Toplam Bölüm",
+    lblManualWatchedEps: "İzlenen Bölüm Sayısı",
+    lblManualGenre: "Tür (virgülle ayır)",
+    lblManualPoster: "Poster URL",
+    lblManualDirector: "Yönetmen",
+    lblManualActors: "Oyuncular",
+    lblManualPlot: "Konu",
+    manualTitleRequired: "Lütfen bir başlık gir.",
+    manualDuplicateError: "Bu yapım zaten listende mevcut.",
     emptySeries: "Henüz dizi eklenmedi. Yukarıdan aratarak ekleyebilirsin.",
     emptyMovies: "Henüz film eklenmedi. Yukarıdan aratarak ekleyebilirsin.",
     emptySeriesWatched: "İzlediğin bir dizi yok. Bir diziye tıklayıp \"İzledim\" seçerek buraya taşıyabilirsin.",
@@ -1717,7 +1913,7 @@ const STRINGS = {
     apiKeyPlaceholder: "Kendi OMDb anahtarın (opsiyonel)",
     save: "Kaydet",
     apiKeySaved: "API anahtarı kaydedildi.",
-    limitReached: "OMDb API anahtarlarının günlük limiti doldu. Poster/arama geçici olarak duraklatıldı. Ayarlar menüsünden kendi anahtarını ekleyebilirsin.",
+    limitReached: "OMDb API anahtarlarının günlük limiti doldu. Poster/arama geçici olarak duraklatıldı. Ayarlar menüsünden kendi anahtarını ekleyebilirsin.",
     addConfirm: (title, year) => `"${title}" (${year}) listene eklensin mi?`,
     addedToast: (title) => `"${title}" listene eklendi.`,
     csvImportedToast: (added, skipped) => `${added} yeni yapım eklendi${skipped ? `, ${skipped} zaten listede olduğu için atlandı` : ""}.`,
@@ -1788,6 +1984,25 @@ const STRINGS = {
     statMovieTime: "Movies Time",
     labelSeries: "TV Series",
     labelMovies: "Movies",
+    addCustomSeriesBtn: "Add Series",
+    addCustomMovieBtn: "Add Movie",
+    manualModalTitleSeries: "Add Custom Series",
+    manualModalTitleMovie: "Add Custom Movie",
+    lblManualTitle: "Title *",
+    lblManualYear: "Year",
+    lblManualStatus: "Status",
+    lblManualRating: "IMDb Rating",
+    lblManualRuntime: "Runtime (min)",
+    lblManualSeasons: "Total Seasons",
+    lblManualTotalEps: "Total Episodes",
+    lblManualWatchedEps: "Watched Episodes Count",
+    lblManualGenre: "Genre (comma-separated)",
+    lblManualPoster: "Poster URL",
+    lblManualDirector: "Director",
+    lblManualActors: "Cast",
+    lblManualPlot: "Plot",
+    manualTitleRequired: "Please enter a title.",
+    manualDuplicateError: "This title is already in your list.",
     emptySeries: "No series added yet. Search above to add one.",
     emptyMovies: "No movies added yet. Search above to add one.",
     emptySeriesWatched: "No series watched yet. Click a series and choose \"Watched\" to move it here.",
@@ -1896,6 +2111,25 @@ function applyLanguage() {
   document.getElementById("labelStatMovieTime").textContent = t("statMovieTime");
   document.getElementById("labelSeries").textContent = t("labelSeries");
   document.getElementById("labelMovies").textContent = t("labelMovies");
+  document.getElementById("labelAddCustomSeries").textContent = t("addCustomSeriesBtn");
+  document.getElementById("labelAddCustomMovie").textContent = t("addCustomMovieBtn");
+  document.getElementById("lblManualTitle").textContent = t("lblManualTitle");
+  document.getElementById("lblManualYear").textContent = t("lblManualYear");
+  document.getElementById("lblManualStatus").textContent = t("lblManualStatus");
+  document.getElementById("optManualWatched").textContent = t("statusWatched");
+  document.getElementById("optManualToWatch").textContent = t("statusToWatch");
+  document.getElementById("lblManualRating").textContent = t("lblManualRating");
+  document.getElementById("lblManualRuntime").textContent = t("lblManualRuntime");
+  document.getElementById("lblManualSeasons").textContent = t("lblManualSeasons");
+  document.getElementById("lblManualTotalEps").textContent = t("lblManualTotalEps");
+  document.getElementById("lblManualWatchedEps").textContent = t("lblManualWatchedEps");
+  document.getElementById("lblManualGenre").textContent = t("lblManualGenre");
+  document.getElementById("lblManualPoster").textContent = t("lblManualPoster");
+  document.getElementById("lblManualDirector").textContent = t("lblManualDirector");
+  document.getElementById("lblManualActors").textContent = t("lblManualActors");
+  document.getElementById("lblManualPlot").textContent = t("lblManualPlot");
+  document.getElementById("manualCancelBtn").textContent = t("confirmCancel");
+  document.getElementById("manualSaveBtn").textContent = t("save");
   document.getElementById("labelSeriesWatched").textContent = t("labelSeriesWatched");
   document.getElementById("labelSeriesToWatch").textContent = t("labelSeriesToWatch");
   document.getElementById("labelMoviesWatched").textContent = t("labelMoviesWatched");
@@ -1918,6 +2152,7 @@ function applyLanguage() {
   document.getElementById("settingsBtn").title = t("settingsBtnLabel");
   document.getElementById("settingsBtn").setAttribute("aria-label", t("settingsBtnLabel"));
   document.getElementById("detailsModalClose").setAttribute("aria-label", t("closeLabel"));
+  document.getElementById("manualModalClose").setAttribute("aria-label", t("closeLabel"));
   document.getElementById("langBtnTr").classList.toggle("active", currentLang === "tr");
   document.getElementById("langBtnEn").classList.toggle("active", currentLang === "en");
   populateGenreFilter();
@@ -1973,6 +2208,93 @@ function showConfirm(message) {
     { label: t("confirmYes"), value: true }
   ]).then(v => !!v);
 }
+
+function openManualModal(type) {
+  const modal = document.getElementById("manualAddModal");
+  const form = document.getElementById("manualAddForm");
+  form.reset();
+  document.getElementById("manualType").value = type;
+  const isSeries = type === "series";
+  document.getElementById("manualModalTitle").textContent = isSeries ? t("manualModalTitleSeries") : t("manualModalTitleMovie");
+  document.getElementById("manualSeasonsGroup").style.display = isSeries ? "flex" : "none";
+  document.getElementById("manualTotalEpsGroup").style.display = isSeries ? "flex" : "none";
+  document.getElementById("manualWatchedEpsGroup").style.display = isSeries ? "flex" : "none";
+  document.getElementById("manualRuntimeInput").placeholder = isSeries ? "45" : "120";
+  modal.classList.add("active");
+  setTimeout(() => document.getElementById("manualTitleInput").focus(), 50);
+}
+
+function closeManualModal() {
+  document.getElementById("manualAddModal").classList.remove("active");
+}
+
+document.getElementById("addCustomSeriesBtn").addEventListener("click", () => openManualModal("series"));
+document.getElementById("addCustomMovieBtn").addEventListener("click", () => openManualModal("movie"));
+document.getElementById("manualModalClose").addEventListener("click", closeManualModal);
+document.getElementById("manualCancelBtn").addEventListener("click", closeManualModal);
+document.getElementById("manualAddModal").addEventListener("click", (e) => {
+  if (e.target.id === "manualAddModal") closeManualModal();
+});
+
+document.getElementById("manualAddForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const type = document.getElementById("manualType").value;
+  const title = document.getElementById("manualTitleInput").value.trim();
+  if (!title) {
+    toast(t("manualTitleRequired"), true);
+    return;
+  }
+
+  const exists = items.some(i => i.type === type && i.title.toLowerCase() === title.toLowerCase());
+  if (exists) {
+    toast(t("manualDuplicateError"), true);
+    return;
+  }
+
+  const year = document.getElementById("manualYearInput").value.trim();
+  const status = document.getElementById("manualStatusInput").value;
+  const ratingVal = document.getElementById("manualRatingInput").value.trim();
+  const runtimeVal = parseInt(document.getElementById("manualRuntimeInput").value, 10);
+  const seasonsVal = parseInt(document.getElementById("manualSeasonsInput").value, 10);
+  const totalEpsVal = parseInt(document.getElementById("manualTotalEpsInput").value, 10);
+  const watchedEpsVal = parseInt(document.getElementById("manualWatchedEpsInput").value, 10);
+  const genre = document.getElementById("manualGenreInput").value.trim();
+  const poster = document.getElementById("manualPosterInput").value.trim();
+  const director = document.getElementById("manualDirectorInput").value.trim();
+  const actors = document.getElementById("manualActorsInput").value.trim();
+  const plot = document.getElementById("manualPlotInput").value.trim();
+
+  const watchedEpsCount = !isNaN(watchedEpsVal) && watchedEpsVal > 0 ? watchedEpsVal : "";
+  const finalStatus = (type === "series" && watchedEpsCount > 0) ? "watched" : status;
+
+  const newItem = {
+    title,
+    year,
+    rating: ratingVal || "",
+    plot,
+    genre,
+    director,
+    actors,
+    poster,
+    episodes: type === "series" ? watchedEpsCount : "",
+    runtime: !isNaN(runtimeVal) && runtimeVal > 0 ? runtimeVal : null,
+    type,
+    totalSeasons: type === "series" && !isNaN(seasonsVal) && seasonsVal > 0 ? seasonsVal : (type === "series" ? 1 : undefined),
+    totalEpisodes: type === "series" && !isNaN(totalEpsVal) && totalEpsVal > 0 ? totalEpsVal : undefined,
+    status: finalStatus,
+    watchedDate: finalStatus === "watched" ? new Date().toISOString() : undefined,
+    notFound: true,
+    isCustom: true,
+    seasonCache: {},
+    watchedEpisodes: {}
+  };
+
+  items.push(newItem);
+  saveItems();
+  closeManualModal();
+  render(document.getElementById("liveSearch").value);
+  toast(t("addedToast")(title));
+});
 
 function canonicalId(item) {
   return item.imdbID ? `imdb-${item.imdbID}` : item.id;
@@ -2033,7 +2355,6 @@ function mergeItemPair(existing, incoming) {
 
   return merged;
 }
-
 
 function dedupeItems(list) {
   const map = new Map();
@@ -2366,7 +2687,7 @@ function buildWatchlistWorkbookBase64() {
   const rows = items.map(item => {
     const watchedEpisodeCount = item.watchedEpisodes
       ? Object.values(item.watchedEpisodes).reduce((sum, arr) => sum + (arr ? arr.length : 0), 0)
-      : 0;
+      : (parseInt(item.episodes) || 0);
     return [
       item.title || "",
       item.type === "series" ? "Dizi" : "Film",
@@ -2613,7 +2934,7 @@ document.getElementById("apiKeySave").addEventListener("click", () => {
     }
   }
   if (clearedAny) saveCache();
-  items.forEach(i => { if (i.notFound) delete i.notFound; });
+  items.forEach(i => { if (i.notFound && !i.isCustom) delete i.notFound; });
   saveItems();
 
   settingsPop.classList.remove("active");
@@ -2754,8 +3075,8 @@ function fillGrid(grid, list, emptyText) {
   list.forEach(item => {
     const card = document.createElement("div");
     card.className = "card";
-    const watchedCount = countWatchedEpisodes(item);
-    const badgeCount = watchedCount || item.episodes;
+    const watchedCount = countWatchedEpisodes(item) || (parseInt(item.episodes) || 0);
+    const badgeCount = watchedCount;
     const showSkeleton = !item.poster && !item.notFound;
     const showNoPoster = item.notFound && !item.poster;
 
@@ -3386,7 +3707,7 @@ async function enrichItemsWithOMDb() {
   if (isOMDbInCooldown()) return;
   for (const item of items) {
     if (omdbLimitReached) return;
-    if (item.poster || item.notFound) continue;
+    if (item.poster || item.notFound || item.isCustom) continue;
     try {
       const data = await fetchOMDbData(item.title, item.type);
       if (omdbLimitReached) return;
@@ -3480,7 +3801,7 @@ document.getElementById("liveSearch").addEventListener("input", (e) => {
 });
 
 async function searchOnline(query) {
-  const font = document.getElementById("searchResults");
+  const searchResults = document.getElementById("searchResults");
   if (!query || omdbLimitReached) {
     searchResults.classList.remove("active");
     return;
@@ -3909,7 +4230,7 @@ async function openDetailsModal(item) {
   modal.style.display = "flex";
   setTimeout(() => modal.classList.add("active"), 10);
 
-  if (item.genre === undefined) {
+  if (!item.isCustom && item.genre === undefined) {
     const data = await fetchOMDbData(item.title, item.type);
     if (data.Response !== "False") {
       item.genre = data.Genre !== "N/A" ? data.Genre : "";
@@ -3926,7 +4247,7 @@ async function openDetailsModal(item) {
       item.actors = "";
     }
     saveItems();
-  } else if (item.type === "series" && !item.imdbID) {
+  } else if (!item.isCustom && item.type === "series" && !item.imdbID) {
     const data = await fetchOMDbData(item.title, item.type);
     if (data.Response !== "False" && data.imdbID) {
       item.imdbID = data.imdbID;
@@ -3935,7 +4256,7 @@ async function openDetailsModal(item) {
     }
   }
 
-  if (activeEpisodeItem !== item) return;
+  if (activeEpisodeItem !== item && item.type === "series") return;
   renderDetailsBody(item);
   if (item.type === "series" && item.imdbID) {
     renderSeasonTabs();
@@ -3950,7 +4271,7 @@ function renderDetailsBody(item) {
   const metaHtml = `<div class="detail-meta-row"><span>${item.year || ""}</span>${item.rating ? `<span>IMDb ${item.rating}</span>` : ""}</div>`;
 
   let infoHtml;
-  if (item.genre === undefined) {
+  if (item.genre === undefined && !item.isCustom) {
     infoHtml = `<div class="empty">${t("loadingDetails")}</div>`;
   } else {
     const rows = [
