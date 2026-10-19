@@ -1462,6 +1462,72 @@
     box-shadow: 0 6px 16px rgba(255, 213, 74, 0.25);
   }
 
+  input[type="date"] {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 12px 14px;
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    font-family: inherit;
+    color-scheme: dark;
+    transition: var(--transition);
+  }
+
+  input[type="date"]:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px rgba(255, 213, 74, 0.15);
+  }
+
+  .custom-field input[type="date"],
+  .confirm-box input[type="date"] {
+    width: 100%;
+  }
+
+  .confirm-box input[type="date"] {
+    margin-bottom: 20px;
+  }
+
+  .edit-btn {
+    position: absolute;
+    top: 12px;
+    right: 54px;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border-radius: var(--radius-sm);
+    background: rgba(9, 11, 16, 0.6);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-dim);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0;
+    transform: translateY(-4px);
+    transition: var(--transition);
+    z-index: 10;
+  }
+
+  .edit-btn svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .card:hover .edit-btn, .edit-btn:focus-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .edit-btn:hover {
+    color: #090B10;
+    background: var(--primary-gradient);
+    border-color: transparent;
+  }
+
   .custom-box {
     background: #141923;
     border: 1px solid var(--border);
@@ -1553,6 +1619,8 @@
     .card-plot { font-size: 12px; }
     .delete-btn { opacity: 1; transform: translateY(0); width: 30px; height: 30px; }
     .delete-btn svg { width: 14px; height: 14px; }
+    .edit-btn { opacity: 1; transform: translateY(0); width: 30px; height: 30px; right: 48px; }
+    .edit-btn svg { width: 14px; height: 14px; }
     .modal-box { max-width: 100%; }
     .modal-header { padding: 18px; }
     .modal-header h3 { font-size: 17px; }
@@ -1709,6 +1777,10 @@
   <div class="custom-box" id="customModalBox"></div>
 </div>
 
+<div class="confirm-overlay" id="dateModal">
+  <div class="confirm-box" id="dateModalBox"></div>
+</div>
+
 <div class="toast-container" id="toastContainer"></div>
 
 <script>
@@ -1716,6 +1788,7 @@ const API_URL = "https://www.omdbapi.com/";
 
 const STORAGE_ITEMS = "watchlist.items.v1";
 const STORAGE_UNSYNCED = "watchlist.unsynced.v1";
+const STORAGE_CLOUD_BASE = "watchlist.cloudBase.v1";
 const STORAGE_CACHE = "watchlist.omdbCache.v1";
 const STORAGE_APIKEY = "watchlist.userApiKey.v1";
 const STORAGE_LANG = "watchlist.lang.v1";
@@ -1879,7 +1952,14 @@ const STRINGS = {
     customInvalidNumber: "Süre ve bölüm sayısı pozitif tam sayı olmalı.",
     customInvalidPoster: "Poster bağlantısı http:// veya https:// ile başlamalı.",
     customDuplicate: (title) => `"${title}" zaten listende var.`,
-    customSeriesNoEpisodes: "Elle eklenen dizilerde bölüm detayı yok. İzlenen bölüm sayısı kartta ve istatistiklerde görünür."
+    customSeriesNoEpisodes: "Elle eklenen dizilerde bölüm detayı yok. İzlenen bölüm sayısı kartta ve istatistiklerde görünür.",
+    editBtnTitle: "Düzenle",
+    customEditSeriesTitle: "Diziyi Düzenle",
+    customEditMovieTitle: "Filmi Düzenle",
+    customUpdated: (title) => `"${title}" güncellendi.`,
+    fieldWatchedDate: "İzlenme tarihi",
+    customInvalidDate: "Geçerli bir tarih seç (gelecekte olamaz).",
+    pickWatchedDate: "Bunu ne zaman izledin?",
   },
   en: {
     appTitle: "My Watch List",
@@ -2000,7 +2080,14 @@ const STRINGS = {
     customInvalidNumber: "Runtime and episode count must be positive whole numbers.",
     customInvalidPoster: "Poster URL must start with http:// or https://.",
     customDuplicate: (title) => `"${title}" is already in your list.`,
-    customSeriesNoEpisodes: "Manually added series have no episode details. The watched episode count shows on the card and in the stats."
+    customSeriesNoEpisodes: "Manually added series have no episode details. The watched episode count shows on the card and in the stats.",
+    editBtnTitle: "Edit",
+    customEditSeriesTitle: "Edit Series",
+    customEditMovieTitle: "Edit Movie",
+    customUpdated: (title) => `"${title}" updated.`,
+    fieldWatchedDate: "Watched on",
+    customInvalidDate: "Pick a valid date (it cannot be in the future).",
+    pickWatchedDate: "When did you watch this?",
   }
 };
 
@@ -2185,9 +2272,21 @@ function dedupeItems(list) {
 }
 
 function ensureItemIds() {
+  let nextOrder = 0;
+  items.forEach(i => {
+    if (typeof i.order === "number" && i.order >= nextOrder) nextOrder = i.order + 1;
+  });
   items.forEach(i => {
     i.id = canonicalId(i) || `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+    if (typeof i.order !== "number") i.order = nextOrder++;
   });
+}
+
+function compareByOrder(a, b) {
+  const ao = typeof a.order === "number" ? a.order : Infinity;
+  const bo = typeof b.order === "number" ? b.order : Infinity;
+  if (ao === bo) return 0;
+  return ao < bo ? -1 : 1;
 }
 
 function loadItems() {
@@ -2234,34 +2333,122 @@ function sanitizeForFirestore(data) {
   return JSON.parse(JSON.stringify(data));
 }
 
+let cloudBase = {};
+let cloudInitialSyncDone = false;
+let cloudPushInFlight = false;
+let cloudPushQueued = false;
+let cloudQueue = Promise.resolve();
+
+function cloudBaseKey() {
+  return `${STORAGE_CLOUD_BASE}.${currentUser ? currentUser.uid : ""}`;
+}
+
+function loadCloudBase() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(cloudBaseKey()) || "{}");
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch (err) {
+    return {};
+  }
+}
+
+function saveCloudBase() {
+  try {
+    localStorage.setItem(cloudBaseKey(), JSON.stringify(cloudBase));
+  } catch (err) {
+  }
+}
+
+function stableStringify(value) {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`;
+  return `{${Object.keys(value).sort().map(k => `${JSON.stringify(k)}:${stableStringify(value[k])}`).join(",")}}`;
+}
+
+function hashString(str) {
+  let h1 = 0xdeadbeef;
+  let h2 = 0x41c6ce57;
+  for (let i = 0; i < str.length; i++) {
+    const ch = str.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return 4294967296 * (2097151 & h2) + (h1 >>> 0);
+}
+
+function itemHash(item) {
+  return hashString(stableStringify(sanitizeForFirestore(item)));
+}
+
+function remoteDocToItem(doc) {
+  const item = { ...doc.data(), id: doc.id };
+  if (!item.status) item.status = "watched";
+  return item;
+}
+
+function persistItemsAfterRemoteChange() {
+  items = dedupeItems(items);
+  ensureItemIds();
+  items.sort(compareByOrder);
+  applyingRemoteUpdate = true;
+  try {
+    localStorage.setItem(STORAGE_ITEMS, JSON.stringify(items));
+  } catch (err) {
+  }
+  render(document.getElementById("liveSearch") ? document.getElementById("liveSearch").value : "");
+  applyingRemoteUpdate = false;
+  saveCloudBase();
+}
+
 async function pushItemsToCloud(isRetry) {
-  if (!firebaseAvailable || !currentUser) return;
+  if (!firebaseAvailable || !currentUser || !cloudInitialSyncDone) return;
+  if (cloudPushInFlight) {
+    cloudPushQueued = true;
+    return;
+  }
+  cloudPushInFlight = true;
+  const user = currentUser;
   try {
     ensureItemIds();
-    const itemsRef = db.collection("watchlists").doc(currentUser.uid).collection("items");
-    const existingSnap = await itemsRef.get();
-    const existingIds = new Set(existingSnap.docs.map(d => d.id));
-    const currentIds = new Set(items.map(i => i.id));
-
+    const itemsRef = db.collection("watchlists").doc(user.uid).collection("items");
+    const currentIds = new Set();
     const ops = [];
-    items.forEach((item, index) => {
-      ops.push({ id: item.id, data: { ...sanitizeForFirestore(item), order: index }, delete: false });
+
+    items.forEach(item => {
+      currentIds.add(item.id);
+      const data = sanitizeForFirestore(item);
+      const hash = hashString(stableStringify(data));
+      if (cloudBase[item.id] !== hash) ops.push({ id: item.id, data, hash, remove: false });
     });
-    existingIds.forEach(id => {
-      if (!currentIds.has(id)) ops.push({ id, delete: true });
+    Object.keys(cloudBase).forEach(id => {
+      if (!currentIds.has(id)) ops.push({ id, remove: true });
     });
+
+    if (!ops.length) {
+      pendingLocalWrite = false;
+      localStorage.removeItem(STORAGE_UNSYNCED);
+      return;
+    }
 
     for (let i = 0; i < ops.length; i += 400) {
+      const chunk = ops.slice(i, i + 400);
       const batch = db.batch();
-      ops.slice(i, i + 400).forEach(op => {
+      chunk.forEach(op => {
         const ref = itemsRef.doc(op.id);
-        if (op.delete) batch.delete(ref);
+        if (op.remove) batch.delete(ref);
         else batch.set(ref, op.data);
       });
       await batch.commit();
+      chunk.forEach(op => {
+        if (op.remove) delete cloudBase[op.id];
+        else cloudBase[op.id] = op.hash;
+      });
+      saveCloudBase();
     }
 
-    await db.collection("watchlists").doc(currentUser.uid).set({
+    await db.collection("watchlists").doc(user.uid).set({
       updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
       itemCount: items.length
     }, { merge: true });
@@ -2276,72 +2463,196 @@ async function pushItemsToCloud(isRetry) {
       pendingLocalWrite = false;
       toast(`Bulut yedekleme başarısız: ${err.message || err.code || "bilinmeyen hata"}`);
     }
+  } finally {
+    cloudPushInFlight = false;
+    if (cloudPushQueued) {
+      cloudPushQueued = false;
+      pushItemsToCloud();
+    }
   }
+}
+
+async function reconcileWithCloud(snapshot, user) {
+  ensureItemIds();
+  const remote = new Map();
+  snapshot.docs.forEach(doc => {
+    const item = remoteDocToItem(doc);
+    remote.set(item.id, item);
+  });
+
+  let legacyFound = false;
+  if (remote.size === 0) {
+    try {
+      const legacySnap = await db.collection("watchlists").doc(user.uid).get();
+      if (legacySnap.exists && Array.isArray(legacySnap.data().items) && legacySnap.data().items.length) {
+        const legacy = legacySnap.data().items;
+        legacy.forEach(i => { if (!i.status) i.status = "watched"; });
+        items = dedupeItems([...items, ...legacy]);
+        ensureItemIds();
+        legacyFound = true;
+      }
+    } catch (err) {
+    }
+  }
+
+  const localUnsynced = localStorage.getItem(STORAGE_UNSYNCED) === "1";
+  const nextItems = [];
+  const handled = new Set();
+
+  items.forEach(local => {
+    const id = local.id;
+    handled.add(id);
+    const remoteItem = remote.get(id);
+    const lh = itemHash(local);
+    const bh = cloudBase[id];
+
+    if (!remoteItem) {
+      if (bh !== undefined && lh === bh) return;
+      nextItems.push(local);
+      return;
+    }
+
+    const rh = itemHash(remoteItem);
+    if (lh === rh) {
+      cloudBase[id] = rh;
+      nextItems.push(local);
+      return;
+    }
+    if (bh === undefined) {
+      if (localUnsynced) {
+        nextItems.push(local);
+      } else {
+        nextItems.push(remoteItem);
+        cloudBase[id] = rh;
+      }
+      return;
+    }
+    if (lh === bh) {
+      nextItems.push(remoteItem);
+      cloudBase[id] = rh;
+      return;
+    }
+    if (rh === bh) {
+      nextItems.push(local);
+      return;
+    }
+    nextItems.push(mergeItemPair(local, remoteItem));
+    cloudBase[id] = rh;
+  });
+
+  remote.forEach((remoteItem, id) => {
+    if (handled.has(id)) return;
+    const rh = itemHash(remoteItem);
+    if (cloudBase[id] !== undefined && cloudBase[id] === rh) return;
+    nextItems.push(remoteItem);
+    cloudBase[id] = rh;
+  });
+
+  Object.keys(cloudBase).forEach(id => {
+    if (!remote.has(id)) delete cloudBase[id];
+  });
+
+  items = nextItems;
+  persistItemsAfterRemoteChange();
+  cloudInitialSyncDone = true;
+
+  pendingLocalWrite = true;
+  await pushItemsToCloud();
+  if (legacyFound && !pendingLocalWrite) {
+    try {
+      await db.collection("watchlists").doc(user.uid).set({ items: firebase.firestore.FieldValue.delete() }, { merge: true });
+    } catch (err) {
+    }
+  }
+  if (items.length > 0) enrichItemsWithOMDb();
+}
+
+function applyCloudChanges(snapshot) {
+  let changed = false;
+  let needsPush = false;
+
+  snapshot.docChanges().forEach(change => {
+    if (change.doc.metadata.hasPendingWrites) return;
+    const id = change.doc.id;
+
+    if (change.type === "removed") {
+      const local = items.find(i => i.id === id);
+      if (local && itemHash(local) === cloudBase[id]) {
+        items = items.filter(i => i !== local);
+        changed = true;
+      }
+      delete cloudBase[id];
+      return;
+    }
+
+    const remoteItem = remoteDocToItem(change.doc);
+    const rh = itemHash(remoteItem);
+    const idx = items.findIndex(i => i.id === id);
+    const bh = cloudBase[id];
+
+    if (idx === -1) {
+      if (bh !== undefined && bh === rh) return;
+      items.push(remoteItem);
+      cloudBase[id] = rh;
+      changed = true;
+      return;
+    }
+
+    const local = items[idx];
+    const lh = itemHash(local);
+    if (lh === rh) {
+      cloudBase[id] = rh;
+      return;
+    }
+    if (bh !== undefined && lh === bh) {
+      items[idx] = remoteItem;
+      cloudBase[id] = rh;
+      changed = true;
+      return;
+    }
+    if (bh !== undefined && rh === bh) return;
+    items[idx] = mergeItemPair(local, remoteItem);
+    cloudBase[id] = rh;
+    changed = true;
+    needsPush = true;
+  });
+
+  if (changed) {
+    persistItemsAfterRemoteChange();
+    enrichItemsWithOMDb();
+  } else {
+    saveCloudBase();
+  }
+  if (needsPush) scheduleCloudSync();
+}
+
+async function handleCloudSnapshot(snapshot, user) {
+  if (!currentUser || currentUser.uid !== user.uid) return;
+  if (!cloudInitialSyncDone) {
+    if (snapshot.metadata.fromCache) return;
+    await reconcileWithCloud(snapshot, user);
+    return;
+  }
+  applyCloudChanges(snapshot);
 }
 
 async function startCloudSync(user) {
   currentUser = user;
+  cloudBase = loadCloudBase();
+  cloudInitialSyncDone = false;
   await syncApiKeyFromCloud();
-  if (items.length > 0 && getApiKeys().length) enrichItemsWithOMDb();
-  const docRef = db.collection("watchlists").doc(user.uid);
-  const itemsRef = docRef.collection("items");
-
-  if (localStorage.getItem(STORAGE_UNSYNCED) === "1") {
-    await pushItemsToCloud();
-  } else {
-    try {
-      const itemsSnap = await itemsRef.get();
-      if (!itemsSnap.empty) {
-        applyingRemoteUpdate = true;
-        const raw = itemsSnap.docs
-          .map(d => ({ ...d.data(), _order: d.data().order }))
-          .sort((a, b) => a._order - b._order)
-          .map(i => { delete i._order; delete i.order; return i; });
-        raw.forEach(i => { if (!i.status) i.status = "watched"; });
-        items = dedupeItems(raw);
-        localStorage.setItem(STORAGE_ITEMS, JSON.stringify(items));
-        render(document.getElementById("liveSearch") ? document.getElementById("liveSearch").value : "");
-        applyingRemoteUpdate = false;
-        if (items.length !== raw.length) await pushItemsToCloud();
-        enrichItemsWithOMDb();
-      } else {
-        const legacySnap = await docRef.get();
-        if (legacySnap.exists && Array.isArray(legacySnap.data().items) && legacySnap.data().items.length) {
-          applyingRemoteUpdate = true;
-          items = dedupeItems(legacySnap.data().items);
-          items.forEach(i => { if (!i.status) i.status = "watched"; });
-          localStorage.setItem(STORAGE_ITEMS, JSON.stringify(items));
-          render(document.getElementById("liveSearch") ? document.getElementById("liveSearch").value : "");
-          applyingRemoteUpdate = false;
-          await pushItemsToCloud();
-          await docRef.set({ items: firebase.firestore.FieldValue.delete() }, { merge: true });
-          enrichItemsWithOMDb();
-        } else {
-          await pushItemsToCloud();
-        }
-      }
-    } catch (err) {
-      console.error("Initial cloud load error:", err);
-    }
-  }
 
   if (cloudUnsubscribe) cloudUnsubscribe();
-  cloudUnsubscribe = itemsRef.onSnapshot((snapshot) => {
-    if (snapshot.metadata.hasPendingWrites || pendingLocalWrite) return;
-    const raw = snapshot.docs
-      .map(d => ({ ...d.data(), _order: d.data().order }))
-      .sort((a, b) => a._order - b._order)
-      .map(i => { delete i._order; delete i.order; return i; });
-    const incoming = dedupeItems(raw);
-    if (JSON.stringify(incoming) === JSON.stringify(items)) return;
-    applyingRemoteUpdate = true;
-    items = incoming;
-    items.forEach(i => { if (!i.status) i.status = "watched"; });
-    localStorage.setItem(STORAGE_ITEMS, JSON.stringify(items));
-    render(document.getElementById("liveSearch") ? document.getElementById("liveSearch").value : "");
-    applyingRemoteUpdate = false;
-    if (incoming.length !== raw.length) pushItemsToCloud();
-  });
+  const itemsRef = db.collection("watchlists").doc(user.uid).collection("items");
+  cloudUnsubscribe = itemsRef.onSnapshot(
+    { includeMetadataChanges: true },
+    (snapshot) => {
+      cloudQueue = cloudQueue
+        .then(() => handleCloudSnapshot(snapshot, user))
+        .catch(err => console.error("Cloud snapshot error:", err));
+    },
+    (err) => console.error("Cloud listener error:", err)
+  );
 }
 
 function stopCloudSync() {
@@ -2349,7 +2660,11 @@ function stopCloudSync() {
     cloudUnsubscribe();
     cloudUnsubscribe = null;
   }
+  clearTimeout(cloudSyncTimer);
+  cloudSyncTimer = null;
   currentUser = null;
+  cloudBase = {};
+  cloudInitialSyncDone = false;
 }
 
 function authErrorMessage(err) {
@@ -2948,6 +3263,9 @@ function fillGrid(grid, list, emptyText) {
     const progressPercent = hasProgress ? Math.min(100, Math.round((watchedCount / item.totalEpisodes) * 100)) : 0;
 
     card.innerHTML = `
+      ${item.custom ? `<button class="edit-btn" type="button" title="${t('editBtnTitle')}" aria-label="${t('editBtnTitle')}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>
+      </button>` : ""}
       <button class="delete-btn" title="${t('removeTitle')}" aria-label="${t('removeTitle')}">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18"></path><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"></path><path d="M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path></svg>
       </button>
@@ -2981,6 +3299,13 @@ function fillGrid(grid, list, emptyText) {
       e.stopPropagation();
       removeItem(item);
     });
+    const editBtn = card.querySelector(".edit-btn");
+    if (editBtn) {
+      editBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        openCustomModal(item.type, item);
+      });
+    }
     card.querySelector('[data-role="statusToggle"]').addEventListener("click", (e) => {
       e.stopPropagation();
       card.querySelector(".status-overlay").classList.toggle("active");
@@ -3008,10 +3333,68 @@ function fillGrid(grid, list, emptyText) {
   });
 }
 
-function setItemStatus(item, status) {
+function dateInputToIso(value) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value || "");
+  if (!match) return null;
+  const today = formatExportDate(new Date());
+  if (value > today) return null;
+  if (value === today) return new Date().toISOString();
+  const date = new Date(+match[1], +match[2] - 1, +match[3], 12, 0, 0);
+  return isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+function askWatchedDate(currentIso) {
+  return new Promise(resolve => {
+    const overlay = document.getElementById("dateModal");
+    const box = document.getElementById("dateModalBox");
+    const today = formatExportDate(new Date());
+    const initial = currentIso && formatExportDate(currentIso) ? formatExportDate(currentIso) : today;
+    box.innerHTML = `
+      <p>${t("pickWatchedDate")}</p>
+      <input type="date" id="dateModalInput" value="${initial}" max="${today}">
+      <div class="confirm-actions">
+        <button class="btn-cancel" type="button" id="dateModalCancel">${t("confirmCancel")}</button>
+        <button type="button" id="dateModalSave">${t("save")}</button>
+      </div>
+    `;
+    let finished = false;
+
+    function finish(value) {
+      if (finished) return;
+      finished = true;
+      overlay.classList.remove("active");
+      box.innerHTML = "";
+      overlay.removeEventListener("click", onOverlay);
+      document.removeEventListener("keydown", onKey);
+      resolve(value);
+    }
+    function onOverlay(e) { if (e.target === overlay) finish(null); }
+    function onKey(e) { if (e.key === "Escape") finish(null); }
+
+    document.getElementById("dateModalCancel").addEventListener("click", () => finish(null));
+    document.getElementById("dateModalSave").addEventListener("click", () => {
+      const iso = dateInputToIso(document.getElementById("dateModalInput").value);
+      if (!iso) {
+        toast(t("customInvalidDate"), true);
+        return;
+      }
+      finish(iso);
+    });
+    overlay.addEventListener("click", onOverlay);
+    document.addEventListener("keydown", onKey);
+    overlay.classList.add("active");
+  });
+}
+
+async function setItemStatus(item, status) {
   if (item.status === status) return;
+  let watchedDate;
+  if (status === "watched") {
+    watchedDate = await askWatchedDate(item.watchedDate);
+    if (!watchedDate) return;
+  }
   item.status = status;
-  item.watchedDate = status === "watched" ? new Date().toISOString() : undefined;
+  item.watchedDate = watchedDate;
   saveItems();
   render(document.getElementById("liveSearch").value);
   toast(status === "watched" ? t("markedWatchedToast")(item.title) : t("markedToWatchToast")(item.title));
@@ -4158,7 +4541,7 @@ function renderDetailsBody(item) {
     infoHtml = `<div class="empty">${t("loadingDetails")}</div>`;
   } else {
     const rows = [
-      item.status === "watched" && item.watchedDate ? `<div class="detail-row"><h4>${t("detailsWatchedDate")}</h4><p>${formatDate(item.watchedDate)}</p></div>` : "",
+      item.status !== "towatch" ? `<div class="detail-row"><h4>${t("detailsWatchedDate")}</h4><input type="date" id="detailsWatchedDateInput" value="${item.watchedDate ? formatExportDate(item.watchedDate) : ""}" max="${formatExportDate(new Date())}"></div>` : "",
       item.genre ? `<div class="detail-row"><h4>${t("detailsGenre")}</h4><p>${escapeHtml(item.genre)}</p></div>` : "",
       item.director ? `<div class="detail-row"><h4>${t("detailsDirector")}</h4><p>${escapeHtml(item.director)}</p></div>` : "",
       item.actors ? `<div class="detail-row"><h4>${t("detailsActors")}</h4><p>${escapeHtml(item.actors)}</p></div>` : "",
@@ -4193,6 +4576,21 @@ function renderDetailsBody(item) {
 
   body.innerHTML = `${posterHtml}${metaHtml}${infoHtml}${episodesHtml}`;
 
+  const watchedDateInput = document.getElementById("detailsWatchedDateInput");
+  if (watchedDateInput) {
+    watchedDateInput.addEventListener("change", () => {
+      const iso = dateInputToIso(watchedDateInput.value);
+      if (!iso) {
+        watchedDateInput.value = item.watchedDate ? formatExportDate(item.watchedDate) : "";
+        toast(t("customInvalidDate"), true);
+        return;
+      }
+      item.watchedDate = iso;
+      saveItems();
+      render(document.getElementById("liveSearch").value);
+    });
+  }
+
   const seasonCheckbox = document.getElementById("markSeasonWatched");
   if (seasonCheckbox) {
     seasonCheckbox.addEventListener("change", (e) => {
@@ -4226,67 +4624,86 @@ document.getElementById("detailsModal").addEventListener("click", (e) => {
 const customModalEl = document.getElementById("customModal");
 const customModalBox = document.getElementById("customModalBox");
 let customModalType = null;
+let customEditItem = null;
 
 function closeCustomModal() {
   customModalEl.classList.remove("active");
   customModalBox.innerHTML = "";
   customModalType = null;
+  customEditItem = null;
 }
 
-function openCustomModal(type) {
+function openCustomModal(type, editItem) {
   customModalType = type;
+  customEditItem = editItem || null;
   const isSeries = type === "series";
+  const isEdit = !!editItem;
+  const today = formatExportDate(new Date());
+  const startStatus = isEdit && editItem.status === "towatch" ? "towatch" : "watched";
+  const startDate = isEdit && editItem.watchedDate ? formatExportDate(editItem.watchedDate) : today;
+  const heading = isEdit
+    ? (isSeries ? t("customEditSeriesTitle") : t("customEditMovieTitle"))
+    : (isSeries ? t("customSeriesTitle") : t("customMovieTitle"));
+  const v = (field) => isEdit && editItem[field] !== undefined && editItem[field] !== null ? escapeHtml(editItem[field]) : "";
+
   customModalBox.innerHTML = `
-    <h3 class="custom-title">${isSeries ? t("customSeriesTitle") : t("customMovieTitle")}</h3>
+    <h3 class="custom-title">${heading}</h3>
     <div class="custom-field">
       <label for="customTitle">${t("fieldTitle")} *</label>
-      <input type="text" id="customTitle" autocomplete="off">
+      <input type="text" id="customTitle" autocomplete="off" value="${v("title")}">
     </div>
     <div class="custom-row">
       <div class="custom-field">
         <label for="customYear">${t("fieldYear")}</label>
-        <input type="text" id="customYear" inputmode="numeric" maxlength="4" autocomplete="off">
+        <input type="text" id="customYear" inputmode="numeric" maxlength="4" autocomplete="off" value="${v("year")}">
       </div>
       <div class="custom-field">
         <label for="customRuntime">${isSeries ? t("fieldRuntimeSeries") : t("fieldRuntimeMovie")}</label>
-        <input type="text" id="customRuntime" inputmode="numeric" autocomplete="off">
+        <input type="text" id="customRuntime" inputmode="numeric" autocomplete="off" value="${v("runtime")}">
       </div>
     </div>
     ${isSeries ? `
     <div class="custom-field">
       <label for="customEpisodes">${t("fieldEpisodesWatched")}</label>
-      <input type="text" id="customEpisodes" inputmode="numeric" autocomplete="off">
+      <input type="text" id="customEpisodes" inputmode="numeric" autocomplete="off" value="${v("episodes")}">
     </div>` : `
     <div class="custom-field">
       <label for="customDirector">${t("fieldDirector")}</label>
-      <input type="text" id="customDirector" autocomplete="off">
+      <input type="text" id="customDirector" autocomplete="off" value="${v("director")}">
     </div>`}
     <div class="custom-field">
       <label for="customGenre">${t("fieldGenre")}</label>
-      <input type="text" id="customGenre" autocomplete="off">
+      <input type="text" id="customGenre" autocomplete="off" value="${v("genre")}">
     </div>
     <div class="custom-field">
       <label for="customPoster">${t("fieldPoster")}</label>
-      <input type="text" id="customPoster" autocomplete="off" placeholder="https://">
+      <input type="text" id="customPoster" autocomplete="off" placeholder="https://" value="${v("poster")}">
     </div>
     <div class="custom-field">
       <label for="customPlot">${t("fieldPlot")}</label>
-      <textarea id="customPlot"></textarea>
+      <textarea id="customPlot">${v("plot")}</textarea>
     </div>
     <div class="custom-field">
       <label for="customStatus">${t("fieldStatus")}</label>
       <select id="customStatus">
-        <option value="watched">${t("statusWatched")}</option>
-        <option value="towatch">${t("statusToWatch")}</option>
+        <option value="watched"${startStatus === "watched" ? " selected" : ""}>${t("statusWatched")}</option>
+        <option value="towatch"${startStatus === "towatch" ? " selected" : ""}>${t("statusToWatch")}</option>
       </select>
+    </div>
+    <div class="custom-field" id="customDateField"${startStatus === "watched" ? "" : ' style="display:none"'}>
+      <label for="customWatchedDate">${t("fieldWatchedDate")}</label>
+      <input type="date" id="customWatchedDate" value="${startDate}" max="${today}">
     </div>
     <div class="confirm-actions">
       <button class="btn-cancel" type="button" id="customCancelBtn">${t("confirmCancel")}</button>
-      <button type="button" id="customSaveBtn">${t("customSave")}</button>
+      <button type="button" id="customSaveBtn">${isEdit ? t("save") : t("customSave")}</button>
     </div>
   `;
   document.getElementById("customCancelBtn").addEventListener("click", closeCustomModal);
   document.getElementById("customSaveBtn").addEventListener("click", submitCustomItem);
+  document.getElementById("customStatus").addEventListener("change", (e) => {
+    document.getElementById("customDateField").style.display = e.target.value === "watched" ? "" : "none";
+  });
   customModalBox.querySelectorAll("input[type='text']").forEach(input => {
     input.addEventListener("keydown", (e) => {
       if (e.key === "Enter") submitCustomItem();
@@ -4299,6 +4716,7 @@ function openCustomModal(type) {
 function submitCustomItem() {
   const type = customModalType;
   if (!type) return;
+  const editItem = customEditItem;
   const isSeries = type === "series";
   const value = (id) => {
     const el = document.getElementById(id);
@@ -4328,27 +4746,54 @@ function submitCustomItem() {
     toast(t("customInvalidPoster"), true);
     return;
   }
-  const duplicate = items.some(i => i.type === type && (i.title || "").trim().toLowerCase() === title.toLowerCase());
+  const duplicate = items.some(i => i !== editItem && i.type === type && (i.title || "").trim().toLowerCase() === title.toLowerCase());
   if (duplicate) {
     toast(t("customDuplicate")(title), true);
     return;
   }
 
   const status = value("customStatus") === "towatch" ? "towatch" : "watched";
-  items.push({
+  let watchedDate;
+  if (status === "watched") {
+    const dateValue = value("customWatchedDate");
+    if (editItem && editItem.watchedDate && formatExportDate(editItem.watchedDate) === dateValue) {
+      watchedDate = editItem.watchedDate;
+    } else {
+      watchedDate = dateInputToIso(dateValue);
+      if (!watchedDate) {
+        toast(t("customInvalidDate"), true);
+        return;
+      }
+    }
+  }
+
+  const fields = {
     title,
     year,
-    rating: "",
     plot: value("customPlot"),
     genre: value("customGenre"),
     director: isSeries ? "" : value("customDirector"),
-    actors: "",
     poster,
     episodes: episodesRaw ? parseInt(episodesRaw, 10) : "",
     runtime: runtimeRaw ? parseInt(runtimeRaw, 10) : null,
-    type,
     status,
-    watchedDate: status === "watched" ? new Date().toISOString() : undefined,
+    watchedDate
+  };
+
+  if (editItem) {
+    Object.assign(editItem, fields);
+    saveItems();
+    render(document.getElementById("liveSearch").value);
+    toast(t("customUpdated")(title));
+    closeCustomModal();
+    return;
+  }
+
+  items.push({
+    ...fields,
+    rating: "",
+    actors: "",
+    type,
     custom: true,
     seasonCache: {},
     watchedEpisodes: {}
@@ -4370,7 +4815,7 @@ document.addEventListener("keydown", (e) => {
 });
 
 applyLanguage();
-if (items.length > 0 && (getApiKeys().length || !firebaseAvailable)) {
+if (items.length > 0 && !firebaseAvailable) {
   enrichItemsWithOMDb();
 }
 </script>
