@@ -2195,8 +2195,14 @@ function showConfirm(message) {
   ]).then(v => !!v);
 }
 
+function customSlug(item) {
+  const slug = normalizeTurkish(String(item.title || "")).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  return slug || hashString(String(item.title || ""));
+}
+
 function canonicalId(item) {
-  return item.imdbID ? `imdb-${item.imdbID}` : item.id;
+  if (item.imdbID) return `imdb-${item.imdbID}`;
+  return `custom-${item.type || "item"}-${customSlug(item)}`;
 }
 
 function itemKey(item) {
@@ -2204,15 +2210,18 @@ function itemKey(item) {
 }
 
 function mergeItemPair(existing, incoming) {
-  const merged = { ...existing };
+  const incomingNewer = (incoming.updatedAt || 0) > (existing.updatedAt || 0);
+  const newer = incomingNewer ? incoming : existing;
+  const older = incomingNewer ? existing : incoming;
+  const isBlank = (v) => v === undefined || v === null || v === "";
+  const merged = { ...older };
 
-  Object.keys(incoming).forEach(key => {
-    const val = incoming[key];
-    const isEmpty = val === undefined || val === null || val === "";
-    if (isEmpty) return;
-    const current = merged[key];
-    if (current === undefined || current === null || current === "") merged[key] = val;
+  Object.keys(newer).forEach(key => {
+    const val = newer[key];
+    if (isBlank(val) && !(newer.custom && key in older)) return;
+    merged[key] = val;
   });
+  merged.updatedAt = Math.max(existing.updatedAt || 0, incoming.updatedAt || 0) || undefined;
 
   const watchedEpisodes = {};
   new Set([...Object.keys(existing.watchedEpisodes || {}), ...Object.keys(incoming.watchedEpisodes || {})])
@@ -2237,7 +2246,7 @@ function mergeItemPair(existing, incoming) {
       ? "watched"
       : (existing.status || incoming.status);
   }
-  merged.watchedDate = merged.status === "watched" ? (existing.watchedDate || incoming.watchedDate) : undefined;
+  merged.watchedDate = merged.status === "watched" ? (newer.watchedDate || older.watchedDate) : undefined;
 
   const seasonCache = {};
   new Set([...Object.keys(existing.seasonCache || {}), ...Object.keys(incoming.seasonCache || {})])
@@ -2250,7 +2259,7 @@ function mergeItemPair(existing, incoming) {
 
   merged.totalEpisodes = Math.max(existing.totalEpisodes || 0, incoming.totalEpisodes || 0) || undefined;
   merged.totalSeasons = Math.max(existing.totalSeasons || 0, incoming.totalSeasons || 0) || undefined;
-  merged.id = canonicalId(existing) || canonicalId(incoming) || existing.id || incoming.id;
+  merged.id = canonicalId(merged);
 
   return merged;
 }
@@ -2277,7 +2286,7 @@ function ensureItemIds() {
     if (typeof i.order === "number" && i.order >= nextOrder) nextOrder = i.order + 1;
   });
   items.forEach(i => {
-    i.id = canonicalId(i) || `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+    i.id = canonicalId(i);
     if (typeof i.order !== "number") i.order = nextOrder++;
   });
 }
@@ -2300,8 +2309,30 @@ function loadItems() {
   }
 }
 
+const updatedAtBaseline = new WeakMap();
+
+function contentSignature(item) {
+  const { updatedAt, seasonCache, notFound, totalEpisodes, ...rest } = item;
+  return stableStringify(rest);
+}
+
+function seedUpdatedAtBaseline() {
+  items.forEach(item => updatedAtBaseline.set(item, contentSignature(item)));
+}
+
+function stampUpdatedItems() {
+  items.forEach(item => {
+    const sig = contentSignature(item);
+    if (updatedAtBaseline.get(item) !== sig) item.updatedAt = Date.now();
+    updatedAtBaseline.set(item, sig);
+  });
+}
+
+seedUpdatedAtBaseline();
+
 function saveItems() {
   ensureItemIds();
+  stampUpdatedItems();
   try {
     localStorage.setItem(STORAGE_ITEMS, JSON.stringify(items));
     if (!applyingRemoteUpdate) localStorage.setItem(STORAGE_UNSYNCED, "1");
@@ -2392,6 +2423,7 @@ function persistItemsAfterRemoteChange() {
   items = dedupeItems(items);
   ensureItemIds();
   items.sort(compareByOrder);
+  seedUpdatedAtBaseline();
   applyingRemoteUpdate = true;
   try {
     localStorage.setItem(STORAGE_ITEMS, JSON.stringify(items));
@@ -2815,9 +2847,7 @@ function buildWatchlistWorkbookBase64() {
     "İzlenme Tarihi", "Toplam Sezon", "İzlenen Bölüm Sayısı", "IMDb ID"
   ];
   const rows = items.map(item => {
-    const watchedEpisodeCount = item.watchedEpisodes
-      ? Object.values(item.watchedEpisodes).reduce((sum, arr) => sum + (arr ? arr.length : 0), 0)
-      : 0;
+    const watchedEpisodeCount = countWatchedEpisodes(item) || parseInt(item.episodes, 10) || 0;
     return [
       item.title || "",
       item.type === "series" ? "Dizi" : "Film",
@@ -3058,7 +3088,7 @@ function resetOmdbState() {
     }
   }
   if (clearedAny) saveCache();
-  items.forEach(i => { if (i.notFound) delete i.notFound; });
+  items.forEach(i => { if (i.notFound && !i.custom) delete i.notFound; });
 }
 
 async function syncApiKeyFromCloud() {
@@ -3157,6 +3187,11 @@ function formatTime(totalMinutes) {
   const minutes = totalMinutes % 60;
   const units = currentLang === "tr" ? ["g", "s", "d"] : ["d", "h", "m"];
   return `${days}${units[0]} ${hours}${units[1]} ${minutes}${units[2]}`;
+}
+
+function todayIso(date) {
+  const d = date || new Date();
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12, 0, 0).toISOString();
 }
 
 function formatDate(iso) {
@@ -3338,7 +3373,7 @@ function dateInputToIso(value) {
   if (!match) return null;
   const today = formatExportDate(new Date());
   if (value > today) return null;
-  if (value === today) return new Date().toISOString();
+  if (value === today) return todayIso();
   const date = new Date(+match[1], +match[2] - 1, +match[3], 12, 0, 0);
   return isNaN(date.getTime()) ? null : date.toISOString();
 }
@@ -3470,18 +3505,18 @@ function parseFlexibleDate(raw) {
   const str = raw.trim();
   if (!str) return null;
 
+  let m = str.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (m) {
+    const day = new Date(+m[1], +m[2] - 1, +m[3], 12, 0, 0);
+    if (!isNaN(day.getTime())) return day;
+  }
+
   let d = new Date(str);
   if (!isNaN(d.getTime())) return d;
 
-  let m = str.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/);
+  m = str.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/);
   if (m) {
     d = new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]);
-    if (!isNaN(d.getTime())) return d;
-  }
-
-  m = str.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (m) {
-    d = new Date(+m[1], +m[2] - 1, +m[3]);
     if (!isNaN(d.getTime())) return d;
   }
 
@@ -3629,7 +3664,7 @@ function parseCSV(text) {
           existing.watchedDate = seriesDates[name].toISOString();
           gotNewData = true;
         } else if (!existing.watchedDate) {
-          existing.watchedDate = new Date().toISOString();
+          existing.watchedDate = todayIso();
         }
       } else {
         if (existing.status !== "towatch" || existing.watchedDate || (existing.watchedEpisodes && Object.keys(existing.watchedEpisodes).length)) {
@@ -3661,7 +3696,7 @@ function parseCSV(text) {
       runtime: null,
       type: "series",
       status: hasWatchedData ? "watched" : "towatch",
-      watchedDate: hasWatchedData ? (seriesDates[name] ? seriesDates[name].toISOString() : new Date().toISOString()) : undefined,
+      watchedDate: hasWatchedData ? (seriesDates[name] ? seriesDates[name].toISOString() : todayIso()) : undefined,
       watchedEpisodes: watchedEpisodes
     });
     added++;
@@ -3688,7 +3723,7 @@ function parseCSV(text) {
       runtime: null,
       type: "movie",
       status: "watched",
-      watchedDate: movieDates[name] ? movieDates[name].toISOString() : new Date().toISOString()
+      watchedDate: movieDates[name] ? movieDates[name].toISOString() : todayIso()
     });
     added++;
   }
@@ -4096,10 +4131,10 @@ function renderSearchResults(results) {
     const row = document.createElement("div");
     row.className = "result-row";
     row.innerHTML = `
-      <img src="${r.Poster !== "N/A" ? r.Poster : ""}" onerror="this.style.visibility='hidden'">
+      <img src="${r.Poster !== "N/A" ? escapeHtml(r.Poster) : ""}" onerror="this.style.visibility='hidden'">
       <div class="result-info">
-        <div>${r.Title}</div>
-        <div class="result-year">${r.Year}</div>
+        <div>${escapeHtml(r.Title)}</div>
+        <div class="result-year">${escapeHtml(r.Year)}</div>
         ${alreadyAdded ? `<div class="result-added">${t('alreadyAdded')}</div>` : ""}
       </div>
     `;
@@ -4141,7 +4176,7 @@ async function selectSearchResult(imdbID, title, year) {
       imdbID: data.imdbID,
       totalSeasons: data.Type !== "movie" ? (parseInt(data.totalSeasons) || 1) : undefined,
       status: choice,
-      watchedDate: choice === "watched" ? new Date().toISOString() : undefined,
+      watchedDate: choice === "watched" ? todayIso() : undefined,
       seasonCache: {},
       watchedEpisodes: {}
     };
@@ -4169,6 +4204,7 @@ document.getElementById("searchInput").addEventListener("input", (e) => {
 });
 
 let activeEpisodeItem = null;
+let activeDetailsItem = null;
 let activeSeasonNum = 1;
 let markerAnimState = { key: null, x: null };
 
@@ -4225,7 +4261,7 @@ async function loadSeasonEpisodes(seasonNum) {
       <span class="ep-checkmark">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
       </span>
-      <span class="episode-title">${epNum}. ${ep.Title}</span>
+      <span class="episode-title">${epNum}. ${escapeHtml(ep.Title)}</span>
     `;
     row.querySelector("input").addEventListener("change", (e) => {
       row.classList.toggle("watched", e.target.checked);
@@ -4398,6 +4434,22 @@ function updateMarkSeasonCheckbox() {
   checkbox.checked = episodes.length > 0 && watched.length === episodes.length;
 }
 
+function promoteSeriesToWatched(item) {
+  if (item.status === "watched") return false;
+  item.status = "watched";
+  if (!item.watchedDate) item.watchedDate = todayIso();
+  return true;
+}
+
+function refreshActiveDetails(item) {
+  if (activeEpisodeItem !== item) return;
+  renderDetailsBody(item);
+  if (item.imdbID) {
+    renderSeasonTabs();
+    loadSeasonEpisodes(activeSeasonNum);
+  }
+}
+
 async function toggleEpisodeWatched(seasonNum, epNum, isWatched) {
   const item = activeEpisodeItem;
   if (!item.watchedEpisodes[seasonNum]) item.watchedEpisodes[seasonNum] = [];
@@ -4406,11 +4458,13 @@ async function toggleEpisodeWatched(seasonNum, epNum, isWatched) {
 
   if (isWatched && idx === -1) {
     list.push(epNum);
-    item.watchedDate = new Date().toISOString();
+    item.watchedDate = todayIso();
   }
   if (!isWatched && idx !== -1) list.splice(idx, 1);
 
+  const promoted = isWatched && promoteSeriesToWatched(item);
   saveItems();
+  if (promoted) refreshActiveDetails(item);
   updateEpisodeModalFooter();
   render(document.getElementById("liveSearch").value);
 
@@ -4485,6 +4539,7 @@ async function openDetailsModal(item) {
   const modal = document.getElementById("detailsModal");
   document.getElementById("detailsModalTitle").textContent = item.title;
 
+  activeDetailsItem = item;
   activeEpisodeItem = item.type === "series" ? item : null;
   activeSeasonNum = 1;
   if (item.type === "series") {
@@ -4522,7 +4577,7 @@ async function openDetailsModal(item) {
     }
   }
 
-  if (activeEpisodeItem !== item) return;
+  if (activeDetailsItem !== item) return;
   renderDetailsBody(item);
   if (item.type === "series" && item.imdbID) {
     renderSeasonTabs();
@@ -4598,9 +4653,11 @@ function renderDetailsBody(item) {
       item.watchedEpisodes[activeSeasonNum] = e.target.checked
         ? episodes.map(ep => parseInt(ep.Episode))
         : [];
-      if (e.target.checked) item.watchedDate = new Date().toISOString();
+      if (e.target.checked) item.watchedDate = todayIso();
+      const promoted = e.target.checked && promoteSeriesToWatched(item);
       saveItems();
-      loadSeasonEpisodes(activeSeasonNum);
+      if (promoted) refreshActiveDetails(item);
+      else loadSeasonEpisodes(activeSeasonNum);
       updateEpisodeModalFooter();
       render(document.getElementById("liveSearch").value);
     });
@@ -4610,6 +4667,7 @@ function renderDetailsBody(item) {
 function closeDetailsModal() {
   const modal = document.getElementById("detailsModal");
   modal.classList.remove("active");
+  activeDetailsItem = null;
   setTimeout(() => {
     modal.style.display = "none";
     activeEpisodeItem = null;
@@ -4663,7 +4721,7 @@ function openCustomModal(type, editItem) {
       </div>
     </div>
     ${isSeries ? `
-    <div class="custom-field">
+    <div class="custom-field" id="customEpisodesField"${startStatus === "watched" ? "" : ' style="display:none"'}>
       <label for="customEpisodes">${t("fieldEpisodesWatched")}</label>
       <input type="text" id="customEpisodes" inputmode="numeric" autocomplete="off" value="${v("episodes")}">
     </div>` : `
@@ -4702,7 +4760,10 @@ function openCustomModal(type, editItem) {
   document.getElementById("customCancelBtn").addEventListener("click", closeCustomModal);
   document.getElementById("customSaveBtn").addEventListener("click", submitCustomItem);
   document.getElementById("customStatus").addEventListener("change", (e) => {
-    document.getElementById("customDateField").style.display = e.target.value === "watched" ? "" : "none";
+    const display = e.target.value === "watched" ? "" : "none";
+    document.getElementById("customDateField").style.display = display;
+    const epField = document.getElementById("customEpisodesField");
+    if (epField) epField.style.display = display;
   });
   customModalBox.querySelectorAll("input[type='text']").forEach(input => {
     input.addEventListener("keydown", (e) => {
@@ -4726,7 +4787,8 @@ function submitCustomItem() {
   const title = value("customTitle");
   const year = value("customYear");
   const runtimeRaw = value("customRuntime");
-  const episodesRaw = isSeries ? value("customEpisodes") : "";
+  const status = value("customStatus") === "towatch" ? "towatch" : "watched";
+  const episodesRaw = isSeries && status === "watched" ? value("customEpisodes") : "";
   const poster = value("customPoster");
 
   if (!title) {
@@ -4752,7 +4814,6 @@ function submitCustomItem() {
     return;
   }
 
-  const status = value("customStatus") === "towatch" ? "towatch" : "watched";
   let watchedDate;
   if (status === "watched") {
     const dateValue = value("customWatchedDate");
