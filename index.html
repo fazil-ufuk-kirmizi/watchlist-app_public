@@ -1615,9 +1615,9 @@
         </div>
         <div class="settings-divider"></div>
         <h4 id="apiSectionTitle">OMDb API anahtarı</h4>
-        <p id="apiSectionDesc">Uygulama günlük 1000 isteklik ortak bir anahtarla geliyor. Limit dolarsa kendi ücretsiz anahtarını buraya ekleyip anında devam edebilirsin. Anahtar sadece bu tarayıcıda saklanır.</p>
+        <p id="apiSectionDesc">Poster ve arama için ücretsiz bir OMDb anahtarı gerekli (omdbapi.com/apikey.aspx). Anahtar hesabına bağlı saklanır ve giriş yaptığın her cihazda otomatik gelir.</p>
         <div class="row">
-          <input type="text" id="apiKeyInput" placeholder="Kendi OMDb anahtarın (opsiyonel)">
+          <input type="text" id="apiKeyInput" placeholder="OMDb API anahtarın">
         </div>
         <button class="settings-save" id="apiKeySave">Kaydet</button>
         <div class="settings-divider"></div>
@@ -1712,7 +1712,6 @@
 <div class="toast-container" id="toastContainer"></div>
 
 <script>
-const DEFAULT_API_KEYS = ["3dbdd36d"];
 const API_URL = "https://www.omdbapi.com/";
 
 const STORAGE_ITEMS = "watchlist.items.v1";
@@ -1804,8 +1803,9 @@ const STRINGS = {
     deletedToast: (title) => `"${title}" kaldırıldı.`,
     langSectionTitle: "Dil",
     apiSectionTitle: "OMDb API anahtarı",
-    apiSectionDesc: "Uygulama günlük 1000 isteklik ortak bir anahtarla geliyor. Limit dolarsa kendi ücretsiz anahtarını buraya ekleyip anında devam edebilirsin. Anahtar sadece bu tarayıcıda saklanır.",
-    apiKeyPlaceholder: "Kendi OMDb anahtarın (opsiyonel)",
+    apiSectionDesc: "Poster ve arama için ücretsiz bir OMDb anahtarı gerekli (omdbapi.com/apikey.aspx). Anahtar hesabına bağlı saklanır ve giriş yaptığın her cihazda otomatik gelir.",
+    apiKeyPlaceholder: "OMDb API anahtarın",
+    noApiKey: "OMDb API anahtarı eksik. Poster ve arama için Ayarlar menüsünden anahtarını ekle.",
     save: "Kaydet",
     apiKeySaved: "API anahtarı kaydedildi.",
     limitReached: "OMDb API anahtarlarının günlük limiti doldu. Poster/arama geçici olarak duraklatıldı. Ayarlar menüsünden kendi anahtarını ekleyebilirsin.",
@@ -1924,8 +1924,9 @@ const STRINGS = {
     deletedToast: (title) => `"${title}" removed.`,
     langSectionTitle: "Language",
     apiSectionTitle: "OMDb API key",
-    apiSectionDesc: "The app ships with a shared key limited to 1000 requests/day. If it's exhausted, add your own free key here to keep going instantly. The key is only stored in this browser.",
-    apiKeyPlaceholder: "Your own OMDb key (optional)",
+    apiSectionDesc: "A free OMDb key is required for posters and search (omdbapi.com/apikey.aspx). The key is stored with your account and is available on every device you sign in on.",
+    apiKeyPlaceholder: "Your OMDb API key",
+    noApiKey: "OMDb API key is missing. Add your key from the settings menu to enable posters and search.",
     save: "Save",
     apiKeySaved: "API key saved.",
     limitReached: "All OMDb API keys have hit their daily limit. Poster lookups and search are paused. Add your own key from the settings menu.",
@@ -2280,6 +2281,8 @@ async function pushItemsToCloud(isRetry) {
 
 async function startCloudSync(user) {
   currentUser = user;
+  await syncApiKeyFromCloud();
+  if (items.length > 0 && getApiKeys().length) enrichItemsWithOMDb();
   const docRef = db.collection("watchlists").doc(user.uid);
   const itemsRef = docRef.collection("items");
 
@@ -2663,7 +2666,7 @@ function saveCache() {
 
 function getApiKeys() {
   const userKey = (localStorage.getItem(STORAGE_APIKEY) || "").trim();
-  return userKey ? [userKey, ...DEFAULT_API_KEYS] : DEFAULT_API_KEYS;
+  return userKey ? [userKey] : [];
 }
 
 function toast(message, isError) {
@@ -2727,13 +2730,7 @@ document.getElementById("cloudSyncNow").addEventListener("click", async () => {
   if (!pendingLocalWrite) toast("Bulut yedekleme tamamlandı.");
 });
 
-document.getElementById("apiKeySave").addEventListener("click", () => {
-  const key = apiKeyInput.value.trim();
-  if (key) {
-    localStorage.setItem(STORAGE_APIKEY, key);
-  } else {
-    localStorage.removeItem(STORAGE_APIKEY);
-  }
+function resetOmdbState() {
   currentKeyIndex = 0;
   omdbLimitReached = false;
   try { localStorage.removeItem(STORAGE_OMDB_LIMIT_HIT_AT); } catch (err) {}
@@ -2747,7 +2744,41 @@ document.getElementById("apiKeySave").addEventListener("click", () => {
   }
   if (clearedAny) saveCache();
   items.forEach(i => { if (i.notFound) delete i.notFound; });
+}
+
+async function syncApiKeyFromCloud() {
+  if (!firebaseAvailable || !currentUser) return;
+  try {
+    const docRef = db.collection("watchlists").doc(currentUser.uid);
+    const snap = await docRef.get();
+    const cloudKey = snap.exists ? String(snap.data().omdbApiKey || "").trim() : "";
+    const localKey = (localStorage.getItem(STORAGE_APIKEY) || "").trim();
+    if (cloudKey && cloudKey !== localKey) {
+      localStorage.setItem(STORAGE_APIKEY, cloudKey);
+      apiKeyInput.value = cloudKey;
+      resetOmdbState();
+    } else if (!cloudKey && localKey) {
+      await docRef.set({ omdbApiKey: localKey }, { merge: true });
+    }
+  } catch (err) {
+    console.error("API key cloud load error:", err);
+  }
+}
+
+document.getElementById("apiKeySave").addEventListener("click", () => {
+  const key = apiKeyInput.value.trim();
+  if (key) {
+    localStorage.setItem(STORAGE_APIKEY, key);
+  } else {
+    localStorage.removeItem(STORAGE_APIKEY);
+  }
+  resetOmdbState();
   saveItems();
+  if (firebaseAvailable && currentUser) {
+    db.collection("watchlists").doc(currentUser.uid)
+      .set({ omdbApiKey: key ? key : firebase.firestore.FieldValue.delete() }, { merge: true })
+      .catch(err => console.error("API key cloud save error:", err));
+  }
 
   settingsPop.classList.remove("active");
   toast(t("apiKeySaved"));
@@ -2774,8 +2805,18 @@ function isOMDbInCooldown() {
   }
 }
 
+function handleMissingApiKey() {
+  if (omdbLimitReached) return;
+  omdbLimitReached = true;
+  toast(t("noApiKey"), true);
+}
+
 async function omdbFetch(params) {
   const keys = getApiKeys();
+  if (!keys.length) {
+    handleMissingApiKey();
+    return { Response: "False" };
+  }
   while (currentKeyIndex < keys.length) {
     const query = new URLSearchParams({ ...params, apikey: keys[currentKeyIndex] }).toString();
     const response = await fetch(`${API_URL}?${query}`);
@@ -4329,7 +4370,7 @@ document.addEventListener("keydown", (e) => {
 });
 
 applyLanguage();
-if (items.length > 0) {
+if (items.length > 0 && (getApiKeys().length || !firebaseAvailable)) {
   enrichItemsWithOMDb();
 }
 </script>
