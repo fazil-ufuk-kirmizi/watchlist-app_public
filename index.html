@@ -36,7 +36,6 @@
 
   * {
     box-sizing: border-box;
-    selection-background-color: rgba(255, 213, 74, 0.2);
   }
 
   html {
@@ -410,7 +409,7 @@
     font-weight: 700;
   }
 
-  input[type="text"], input[type="email"], input[type="password"], input[type="number"], input[type="url"], input[type="file"], textarea {
+  input[type="text"], input[type="file"] {
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid var(--border);
     color: var(--text);
@@ -422,12 +421,7 @@
     transition: var(--transition);
   }
 
-  textarea {
-    resize: vertical;
-    min-height: 80px;
-  }
-
-  input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focus, input[type="number"]:focus, input[type="url"]:focus, textarea:focus {
+  input[type="text"]:focus {
     outline: none;
     border-color: var(--primary);
     background: rgba(255, 255, 255, 0.06);
@@ -453,11 +447,6 @@
     transition: var(--transition);
     flex: 0 0 auto;
     max-width: 180px;
-  }
-
-  select option {
-    background: #141923;
-    color: var(--text);
   }
 
   select:focus {
@@ -596,7 +585,8 @@
     border-radius: 20px;
   }
 
-  .section-line {
+  .section-title::after {
+    content: "";
     flex: 1;
     height: 1px;
     background: linear-gradient(90deg, var(--border), transparent);
@@ -605,36 +595,6 @@
   .section-title:first-child {
     padding-top: 0;
     margin-top: 0;
-  }
-
-  .manual-add-btn {
-    background: rgba(255, 213, 74, 0.1);
-    color: var(--primary);
-    border: 1px solid rgba(255, 213, 74, 0.25);
-    padding: 8px 14px;
-    font-size: 12px;
-    font-family: 'Space Grotesk', sans-serif;
-    font-weight: 700;
-    border-radius: 20px;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    cursor: pointer;
-    transition: var(--transition);
-    box-shadow: none;
-  }
-
-  .manual-add-btn:hover {
-    background: var(--primary-gradient);
-    color: #090B10;
-    border-color: transparent;
-    transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(255, 213, 74, 0.25);
-  }
-
-  .manual-add-btn svg {
-    width: 14px;
-    height: 14px;
   }
 
   .subsection-title {
@@ -648,9 +608,6 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    cursor: pointer;
-    -webkit-user-select: none;
-    user-select: none;
   }
 
   .subsection-title .count {
@@ -661,6 +618,12 @@
     border: 1px solid var(--border);
     padding: 2px 10px;
     border-radius: 20px;
+  }
+
+  .subsection-title {
+    cursor: pointer;
+    -webkit-user-select: none;
+    user-select: none;
   }
 
   .drawer-chevron {
@@ -1439,57 +1402,6 @@
     background: rgba(255, 255, 255, 0.08);
   }
 
-  .manual-modal-box {
-    max-width: 540px;
-    max-height: 90vh;
-    overflow-y: auto;
-  }
-
-  .manual-modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-  }
-
-  .manual-modal-header h3 {
-    font-family: 'Manrope', sans-serif;
-    font-size: 20px;
-    font-weight: 700;
-    margin: 0;
-  }
-
-  .form-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 14px;
-    margin-bottom: 20px;
-  }
-
-  .form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .form-group.full {
-    grid-column: 1 / -1;
-  }
-
-  .form-group label {
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    color: var(--text-dim);
-    font-weight: 600;
-  }
-
-  .form-group select {
-    max-width: none;
-    width: 100%;
-  }
-
   .toast-container {
     position: fixed;
     bottom: 28px;
@@ -1531,6 +1443,94 @@
     to { opacity: 0; transform: translateY(12px) scale(0.98); }
   }
 
+  .add-custom-btn {
+    background: rgba(255, 213, 74, 0.1);
+    color: var(--primary);
+    border: 1px solid rgba(255, 213, 74, 0.25);
+    padding: 6px 14px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    border-radius: 20px;
+    box-shadow: none;
+  }
+
+  .add-custom-btn:hover {
+    background: var(--primary-gradient);
+    color: #090B10;
+    border-color: transparent;
+    box-shadow: 0 6px 16px rgba(255, 213, 74, 0.25);
+  }
+
+  .custom-box {
+    background: #141923;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    max-width: 480px;
+    width: 100%;
+    max-height: calc(100vh - 48px);
+    overflow-y: auto;
+    padding: 28px;
+    box-shadow: var(--shadow-lg);
+    animation: confirmIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .custom-title {
+    font-family: 'Manrope', sans-serif;
+    font-weight: 800;
+    font-size: 20px;
+    letter-spacing: -0.5px;
+    margin: 0 0 20px 0;
+  }
+
+  .custom-field {
+    flex: 1 1 0;
+    min-width: 0;
+    margin-bottom: 14px;
+  }
+
+  .custom-field label {
+    display: block;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: var(--text-dim);
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+
+  .custom-field select {
+    width: 100%;
+    max-width: none;
+  }
+
+  .custom-field textarea {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 14px 16px;
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    font-family: inherit;
+    width: 100%;
+    min-height: 84px;
+    resize: vertical;
+    transition: var(--transition);
+  }
+
+  .custom-field textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    background: rgba(255, 255, 255, 0.06);
+    box-shadow: 0 0 0 4px rgba(255, 213, 74, 0.15);
+  }
+
+  .custom-row {
+    display: flex;
+    gap: 12px;
+  }
+
   @media (max-width: 768px) {
     header { padding: 16px; position: relative; z-index: 100; }
     main { padding: 0 16px 60px 16px; }
@@ -1560,7 +1560,6 @@
     .detail-poster { width: 96px; margin: 0 14px 14px 0; }
     .confirm-overlay { padding: 16px; }
     .confirm-box { padding: 20px; }
-    .form-grid { grid-template-columns: 1fr; }
     .toast-container { left: 16px; right: 16px; bottom: 16px; max-width: none; }
   }
 
@@ -1598,7 +1597,7 @@
     <div class="header-spacer"></div>
     <div class="settings-wrap">
       <button class="icon-btn" id="settingsBtn" title="OMDb API key ayarları" aria-label="Ayarlar">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82-.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
       </button>
       <div class="settings-pop" id="settingsPop">
         <h4 id="accountSectionTitle">Hesap</h4>
@@ -1676,29 +1675,13 @@
 </div>
 
 <main>
-  <h2 class="section-title">
-    <span id="labelSeries">Diziler</span>
-    <span class="count" id="seriesCount">0</span>
-    <span class="section-line"></span>
-    <button type="button" class="manual-add-btn" id="addCustomSeriesBtn">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-      <span id="labelAddCustomSeries">Dizi Ekle</span>
-    </button>
-  </h2>
+  <h2 class="section-title"><span id="labelSeries">Diziler</span> <span class="count" id="seriesCount">0</span><button class="add-custom-btn" id="addCustomSeriesBtn" type="button">+ Kendim Ekle</button></h2>
   <h3 class="subsection-title" id="seriesWatchedHeader" data-section="seriesWatched"><span id="labelSeriesWatched">İzlenenler</span> <span class="count" id="seriesWatchedCount">0</span><svg class="drawer-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></h3>
   <div class="grid row-view" id="seriesWatchedGrid"></div>
   <h3 class="subsection-title" id="seriesToWatchHeader" data-section="seriesToWatch"><span id="labelSeriesToWatch">İzlemek İstiyorum</span> <span class="count" id="seriesToWatchCount">0</span><svg class="drawer-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></h3>
   <div class="grid row-view" id="seriesToWatchGrid"></div>
 
-  <h2 class="section-title">
-    <span id="labelMovies">Filmler</span>
-    <span class="count" id="movieCount">0</span>
-    <span class="section-line"></span>
-    <button type="button" class="manual-add-btn" id="addCustomMovieBtn">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-      <span id="labelAddCustomMovie">Film Ekle</span>
-    </button>
-  </h2>
+  <h2 class="section-title"><span id="labelMovies">Filmler</span> <span class="count" id="movieCount">0</span><button class="add-custom-btn" id="addCustomMovieBtn" type="button">+ Kendim Ekle</button></h2>
   <h3 class="subsection-title" id="movieWatchedHeader" data-section="movieWatched"><span id="labelMoviesWatched">İzlenenler</span> <span class="count" id="movieWatchedCount">0</span><svg class="drawer-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></h3>
   <div class="grid row-view" id="movieWatchedGrid"></div>
   <h3 class="subsection-title" id="movieToWatchHeader" data-section="movieToWatch"><span id="labelMoviesToWatch">İzlemek İstiyorum</span> <span class="count" id="movieToWatchCount">0</span><svg class="drawer-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></h3>
@@ -1722,77 +1705,8 @@
   </div>
 </div>
 
-<div class="confirm-overlay" id="manualAddModal">
-  <div class="confirm-box manual-modal-box">
-    <div class="manual-modal-header">
-      <h3 id="manualModalTitle">Manuel Yapım Ekle</h3>
-      <button type="button" class="modal-close" id="manualModalClose" aria-label="Kapat">&times;</button>
-    </div>
-    <form id="manualAddForm">
-      <input type="hidden" id="manualType" value="series">
-      <div class="form-grid">
-        <div class="form-group full">
-          <label id="lblManualTitle" for="manualTitleInput">Başlık *</label>
-          <input type="text" id="manualTitleInput" required>
-        </div>
-        <div class="form-group">
-          <label id="lblManualYear" for="manualYearInput">Yıl</label>
-          <input type="text" id="manualYearInput" placeholder="2024">
-        </div>
-        <div class="form-group">
-          <label id="lblManualStatus" for="manualStatusInput">Durum</label>
-          <select id="manualStatusInput">
-            <option value="watched" id="optManualWatched">İzledim</option>
-            <option value="towatch" id="optManualToWatch">İzlemek İstiyorum</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label id="lblManualRating" for="manualRatingInput">IMDb Puanı</label>
-          <input type="number" step="0.1" min="0" max="10" id="manualRatingInput" placeholder="8.2">
-        </div>
-        <div class="form-group">
-          <label id="lblManualRuntime" for="manualRuntimeInput">Süre (dk)</label>
-          <input type="number" min="1" id="manualRuntimeInput" placeholder="45">
-        </div>
-        <div class="form-group" id="manualSeasonsGroup">
-          <label id="lblManualSeasons" for="manualSeasonsInput">Toplam Sezon</label>
-          <input type="number" min="1" id="manualSeasonsInput" placeholder="1">
-        </div>
-        <div class="form-group" id="manualTotalEpsGroup">
-          <label id="lblManualTotalEps" for="manualTotalEpsInput">Toplam Bölüm</label>
-          <input type="number" min="1" id="manualTotalEpsInput" placeholder="10">
-        </div>
-        <div class="form-group full" id="manualWatchedEpsGroup">
-          <label id="lblManualWatchedEps" for="manualWatchedEpsInput">İzlenen Bölüm Sayısı</label>
-          <input type="number" min="0" id="manualWatchedEpsInput" placeholder="0">
-        </div>
-        <div class="form-group full">
-          <label id="lblManualGenre" for="manualGenreInput">Tür (virgülle ayır)</label>
-          <input type="text" id="manualGenreInput" placeholder="Action, Sci-Fi">
-        </div>
-        <div class="form-group full">
-          <label id="lblManualPoster" for="manualPosterInput">Poster URL</label>
-          <input type="url" id="manualPosterInput" placeholder="https://...">
-        </div>
-        <div class="form-group">
-          <label id="lblManualDirector" for="manualDirectorInput">Yönetmen</label>
-          <input type="text" id="manualDirectorInput">
-        </div>
-        <div class="form-group">
-          <label id="lblManualActors" for="manualActorsInput">Oyuncular</label>
-          <input type="text" id="manualActorsInput">
-        </div>
-        <div class="form-group full">
-          <label id="lblManualPlot" for="manualPlotInput">Konu</label>
-          <textarea id="manualPlotInput" rows="3"></textarea>
-        </div>
-      </div>
-      <div class="confirm-actions">
-        <button type="button" class="btn-cancel" id="manualCancelBtn">Vazgeç</button>
-        <button type="submit" id="manualSaveBtn">Kaydet</button>
-      </div>
-    </form>
-  </div>
+<div class="confirm-overlay" id="customModal">
+  <div class="custom-box" id="customModalBox"></div>
 </div>
 
 <div class="toast-container" id="toastContainer"></div>
@@ -1865,25 +1779,6 @@ const STRINGS = {
     statMovieTime: "Film Süresi",
     labelSeries: "Diziler",
     labelMovies: "Filmler",
-    addCustomSeriesBtn: "Dizi Ekle",
-    addCustomMovieBtn: "Film Ekle",
-    manualModalTitleSeries: "Manuel Dizi Ekle",
-    manualModalTitleMovie: "Manuel Film Ekle",
-    lblManualTitle: "Başlık *",
-    lblManualYear: "Yıl",
-    lblManualStatus: "Durum",
-    lblManualRating: "IMDb Puanı",
-    lblManualRuntime: "Süre (dk)",
-    lblManualSeasons: "Toplam Sezon",
-    lblManualTotalEps: "Toplam Bölüm",
-    lblManualWatchedEps: "İzlenen Bölüm Sayısı",
-    lblManualGenre: "Tür (virgülle ayır)",
-    lblManualPoster: "Poster URL",
-    lblManualDirector: "Yönetmen",
-    lblManualActors: "Oyuncular",
-    lblManualPlot: "Konu",
-    manualTitleRequired: "Lütfen bir başlık gir.",
-    manualDuplicateError: "Bu yapım zaten listende mevcut.",
     emptySeries: "Henüz dizi eklenmedi. Yukarıdan aratarak ekleyebilirsin.",
     emptyMovies: "Henüz film eklenmedi. Yukarıdan aratarak ekleyebilirsin.",
     emptySeriesWatched: "İzlediğin bir dizi yok. Bir diziye tıklayıp \"İzledim\" seçerek buraya taşıyabilirsin.",
@@ -1913,7 +1808,7 @@ const STRINGS = {
     apiKeyPlaceholder: "Kendi OMDb anahtarın (opsiyonel)",
     save: "Kaydet",
     apiKeySaved: "API anahtarı kaydedildi.",
-    limitReached: "OMDb API anahtarlarının günlük limiti doldu. Poster/arama geçici olarak duraklatıldı. Ayarlar menüsünden kendi anahtarını ekleyebilirsin.",
+    limitReached: "OMDb API anahtarlarının günlük limiti doldu. Poster/arama geçici olarak duraklatıldı. Ayarlar menüsünden kendi anahtarını ekleyebilirsin.",
     addConfirm: (title, year) => `"${title}" (${year}) listene eklensin mi?`,
     addedToast: (title) => `"${title}" listene eklendi.`,
     csvImportedToast: (added, skipped) => `${added} yeni yapım eklendi${skipped ? `, ${skipped} zaten listede olduğu için atlandı` : ""}.`,
@@ -1964,7 +1859,27 @@ const STRINGS = {
     noMoviesToExport: "Dışa aktarılacak film yok.",
     seriesExportedToast: (count) => `${count} dizi Excel dosyasına aktarıldı.`,
     moviesExportedToast: (watched, watchlist) => `${watched} izlenen ve ${watchlist} izlemek istenen film aktarıldı.`,
-    exportFailed: (msg) => `Dışa aktarma başarısız: ${msg}`
+    exportFailed: (msg) => `Dışa aktarma başarısız: ${msg}`,
+    addCustomBtn: "+ Kendim Ekle",
+    customSeriesTitle: "Diziyi Elle Ekle",
+    customMovieTitle: "Filmi Elle Ekle",
+    fieldTitle: "Ad",
+    fieldYear: "Yıl",
+    fieldGenre: "Tür (virgülle ayır)",
+    fieldDirector: "Yönetmen",
+    fieldRuntimeMovie: "Süre (dk)",
+    fieldRuntimeSeries: "Bölüm süresi (dk)",
+    fieldEpisodesWatched: "İzlenen bölüm sayısı",
+    fieldPoster: "Poster bağlantısı (URL)",
+    fieldPlot: "Konu",
+    fieldStatus: "Durum",
+    customSave: "Ekle",
+    customTitleRequired: "Ad alanı zorunlu.",
+    customInvalidYear: "Yıl 4 haneli bir sayı olmalı.",
+    customInvalidNumber: "Süre ve bölüm sayısı pozitif tam sayı olmalı.",
+    customInvalidPoster: "Poster bağlantısı http:// veya https:// ile başlamalı.",
+    customDuplicate: (title) => `"${title}" zaten listende var.`,
+    customSeriesNoEpisodes: "Elle eklenen dizilerde bölüm detayı yok. İzlenen bölüm sayısı kartta ve istatistiklerde görünür."
   },
   en: {
     appTitle: "My Watch List",
@@ -1984,25 +1899,6 @@ const STRINGS = {
     statMovieTime: "Movies Time",
     labelSeries: "TV Series",
     labelMovies: "Movies",
-    addCustomSeriesBtn: "Add Series",
-    addCustomMovieBtn: "Add Movie",
-    manualModalTitleSeries: "Add Custom Series",
-    manualModalTitleMovie: "Add Custom Movie",
-    lblManualTitle: "Title *",
-    lblManualYear: "Year",
-    lblManualStatus: "Status",
-    lblManualRating: "IMDb Rating",
-    lblManualRuntime: "Runtime (min)",
-    lblManualSeasons: "Total Seasons",
-    lblManualTotalEps: "Total Episodes",
-    lblManualWatchedEps: "Watched Episodes Count",
-    lblManualGenre: "Genre (comma-separated)",
-    lblManualPoster: "Poster URL",
-    lblManualDirector: "Director",
-    lblManualActors: "Cast",
-    lblManualPlot: "Plot",
-    manualTitleRequired: "Please enter a title.",
-    manualDuplicateError: "This title is already in your list.",
     emptySeries: "No series added yet. Search above to add one.",
     emptyMovies: "No movies added yet. Search above to add one.",
     emptySeriesWatched: "No series watched yet. Click a series and choose \"Watched\" to move it here.",
@@ -2083,7 +1979,27 @@ const STRINGS = {
     noMoviesToExport: "There are no movies to export.",
     seriesExportedToast: (count) => `${count} series exported to Excel.`,
     moviesExportedToast: (watched, watchlist) => `Exported ${watched} watched and ${watchlist} want-to-watch movies.`,
-    exportFailed: (msg) => `Export failed: ${msg}`
+    exportFailed: (msg) => `Export failed: ${msg}`,
+    addCustomBtn: "+ Add Manually",
+    customSeriesTitle: "Add Series Manually",
+    customMovieTitle: "Add Movie Manually",
+    fieldTitle: "Title",
+    fieldYear: "Year",
+    fieldGenre: "Genre (comma separated)",
+    fieldDirector: "Director",
+    fieldRuntimeMovie: "Runtime (min)",
+    fieldRuntimeSeries: "Episode runtime (min)",
+    fieldEpisodesWatched: "Episodes watched",
+    fieldPoster: "Poster URL",
+    fieldPlot: "Plot",
+    fieldStatus: "Status",
+    customSave: "Add",
+    customTitleRequired: "Title is required.",
+    customInvalidYear: "Year must be a 4-digit number.",
+    customInvalidNumber: "Runtime and episode count must be positive whole numbers.",
+    customInvalidPoster: "Poster URL must start with http:// or https://.",
+    customDuplicate: (title) => `"${title}" is already in your list.`,
+    customSeriesNoEpisodes: "Manually added series have no episode details. The watched episode count shows on the card and in the stats."
   }
 };
 
@@ -2111,25 +2027,8 @@ function applyLanguage() {
   document.getElementById("labelStatMovieTime").textContent = t("statMovieTime");
   document.getElementById("labelSeries").textContent = t("labelSeries");
   document.getElementById("labelMovies").textContent = t("labelMovies");
-  document.getElementById("labelAddCustomSeries").textContent = t("addCustomSeriesBtn");
-  document.getElementById("labelAddCustomMovie").textContent = t("addCustomMovieBtn");
-  document.getElementById("lblManualTitle").textContent = t("lblManualTitle");
-  document.getElementById("lblManualYear").textContent = t("lblManualYear");
-  document.getElementById("lblManualStatus").textContent = t("lblManualStatus");
-  document.getElementById("optManualWatched").textContent = t("statusWatched");
-  document.getElementById("optManualToWatch").textContent = t("statusToWatch");
-  document.getElementById("lblManualRating").textContent = t("lblManualRating");
-  document.getElementById("lblManualRuntime").textContent = t("lblManualRuntime");
-  document.getElementById("lblManualSeasons").textContent = t("lblManualSeasons");
-  document.getElementById("lblManualTotalEps").textContent = t("lblManualTotalEps");
-  document.getElementById("lblManualWatchedEps").textContent = t("lblManualWatchedEps");
-  document.getElementById("lblManualGenre").textContent = t("lblManualGenre");
-  document.getElementById("lblManualPoster").textContent = t("lblManualPoster");
-  document.getElementById("lblManualDirector").textContent = t("lblManualDirector");
-  document.getElementById("lblManualActors").textContent = t("lblManualActors");
-  document.getElementById("lblManualPlot").textContent = t("lblManualPlot");
-  document.getElementById("manualCancelBtn").textContent = t("confirmCancel");
-  document.getElementById("manualSaveBtn").textContent = t("save");
+  document.getElementById("addCustomSeriesBtn").textContent = t("addCustomBtn");
+  document.getElementById("addCustomMovieBtn").textContent = t("addCustomBtn");
   document.getElementById("labelSeriesWatched").textContent = t("labelSeriesWatched");
   document.getElementById("labelSeriesToWatch").textContent = t("labelSeriesToWatch");
   document.getElementById("labelMoviesWatched").textContent = t("labelMoviesWatched");
@@ -2152,7 +2051,6 @@ function applyLanguage() {
   document.getElementById("settingsBtn").title = t("settingsBtnLabel");
   document.getElementById("settingsBtn").setAttribute("aria-label", t("settingsBtnLabel"));
   document.getElementById("detailsModalClose").setAttribute("aria-label", t("closeLabel"));
-  document.getElementById("manualModalClose").setAttribute("aria-label", t("closeLabel"));
   document.getElementById("langBtnTr").classList.toggle("active", currentLang === "tr");
   document.getElementById("langBtnEn").classList.toggle("active", currentLang === "en");
   populateGenreFilter();
@@ -2208,93 +2106,6 @@ function showConfirm(message) {
     { label: t("confirmYes"), value: true }
   ]).then(v => !!v);
 }
-
-function openManualModal(type) {
-  const modal = document.getElementById("manualAddModal");
-  const form = document.getElementById("manualAddForm");
-  form.reset();
-  document.getElementById("manualType").value = type;
-  const isSeries = type === "series";
-  document.getElementById("manualModalTitle").textContent = isSeries ? t("manualModalTitleSeries") : t("manualModalTitleMovie");
-  document.getElementById("manualSeasonsGroup").style.display = isSeries ? "flex" : "none";
-  document.getElementById("manualTotalEpsGroup").style.display = isSeries ? "flex" : "none";
-  document.getElementById("manualWatchedEpsGroup").style.display = isSeries ? "flex" : "none";
-  document.getElementById("manualRuntimeInput").placeholder = isSeries ? "45" : "120";
-  modal.classList.add("active");
-  setTimeout(() => document.getElementById("manualTitleInput").focus(), 50);
-}
-
-function closeManualModal() {
-  document.getElementById("manualAddModal").classList.remove("active");
-}
-
-document.getElementById("addCustomSeriesBtn").addEventListener("click", () => openManualModal("series"));
-document.getElementById("addCustomMovieBtn").addEventListener("click", () => openManualModal("movie"));
-document.getElementById("manualModalClose").addEventListener("click", closeManualModal);
-document.getElementById("manualCancelBtn").addEventListener("click", closeManualModal);
-document.getElementById("manualAddModal").addEventListener("click", (e) => {
-  if (e.target.id === "manualAddModal") closeManualModal();
-});
-
-document.getElementById("manualAddForm").addEventListener("submit", (e) => {
-  e.preventDefault();
-  const type = document.getElementById("manualType").value;
-  const title = document.getElementById("manualTitleInput").value.trim();
-  if (!title) {
-    toast(t("manualTitleRequired"), true);
-    return;
-  }
-
-  const exists = items.some(i => i.type === type && i.title.toLowerCase() === title.toLowerCase());
-  if (exists) {
-    toast(t("manualDuplicateError"), true);
-    return;
-  }
-
-  const year = document.getElementById("manualYearInput").value.trim();
-  const status = document.getElementById("manualStatusInput").value;
-  const ratingVal = document.getElementById("manualRatingInput").value.trim();
-  const runtimeVal = parseInt(document.getElementById("manualRuntimeInput").value, 10);
-  const seasonsVal = parseInt(document.getElementById("manualSeasonsInput").value, 10);
-  const totalEpsVal = parseInt(document.getElementById("manualTotalEpsInput").value, 10);
-  const watchedEpsVal = parseInt(document.getElementById("manualWatchedEpsInput").value, 10);
-  const genre = document.getElementById("manualGenreInput").value.trim();
-  const poster = document.getElementById("manualPosterInput").value.trim();
-  const director = document.getElementById("manualDirectorInput").value.trim();
-  const actors = document.getElementById("manualActorsInput").value.trim();
-  const plot = document.getElementById("manualPlotInput").value.trim();
-
-  const watchedEpsCount = !isNaN(watchedEpsVal) && watchedEpsVal > 0 ? watchedEpsVal : "";
-  const finalStatus = (type === "series" && watchedEpsCount > 0) ? "watched" : status;
-
-  const newItem = {
-    title,
-    year,
-    rating: ratingVal || "",
-    plot,
-    genre,
-    director,
-    actors,
-    poster,
-    episodes: type === "series" ? watchedEpsCount : "",
-    runtime: !isNaN(runtimeVal) && runtimeVal > 0 ? runtimeVal : null,
-    type,
-    totalSeasons: type === "series" && !isNaN(seasonsVal) && seasonsVal > 0 ? seasonsVal : (type === "series" ? 1 : undefined),
-    totalEpisodes: type === "series" && !isNaN(totalEpsVal) && totalEpsVal > 0 ? totalEpsVal : undefined,
-    status: finalStatus,
-    watchedDate: finalStatus === "watched" ? new Date().toISOString() : undefined,
-    notFound: true,
-    isCustom: true,
-    seasonCache: {},
-    watchedEpisodes: {}
-  };
-
-  items.push(newItem);
-  saveItems();
-  closeManualModal();
-  render(document.getElementById("liveSearch").value);
-  toast(t("addedToast")(title));
-});
 
 function canonicalId(item) {
   return item.imdbID ? `imdb-${item.imdbID}` : item.id;
@@ -2355,6 +2166,7 @@ function mergeItemPair(existing, incoming) {
 
   return merged;
 }
+
 
 function dedupeItems(list) {
   const map = new Map();
@@ -2687,7 +2499,7 @@ function buildWatchlistWorkbookBase64() {
   const rows = items.map(item => {
     const watchedEpisodeCount = item.watchedEpisodes
       ? Object.values(item.watchedEpisodes).reduce((sum, arr) => sum + (arr ? arr.length : 0), 0)
-      : (parseInt(item.episodes) || 0);
+      : 0;
     return [
       item.title || "",
       item.type === "series" ? "Dizi" : "Film",
@@ -2934,7 +2746,7 @@ document.getElementById("apiKeySave").addEventListener("click", () => {
     }
   }
   if (clearedAny) saveCache();
-  items.forEach(i => { if (i.notFound && !i.isCustom) delete i.notFound; });
+  items.forEach(i => { if (i.notFound) delete i.notFound; });
   saveItems();
 
   settingsPop.classList.remove("active");
@@ -2987,13 +2799,23 @@ function formatTime(totalMinutes) {
   const days = Math.floor(totalMinutes / (24 * 60));
   const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
   const minutes = totalMinutes % 60;
-  return `${days}g ${hours}s ${minutes}d`;
+  const units = currentLang === "tr" ? ["g", "s", "d"] : ["d", "h", "m"];
+  return `${days}${units[0]} ${hours}${units[1]} ${minutes}${units[2]}`;
 }
 
 function formatDate(iso) {
   if (!iso) return "";
   const d = new Date(iso);
   return d.toLocaleDateString(currentLang === "tr" ? "tr-TR" : "en-US", { year: "numeric", month: "long", day: "numeric" });
+}
+
+function escapeHtml(value) {
+  return String(value === undefined || value === null ? "" : value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 function getItemGenres(item) {
@@ -3008,7 +2830,7 @@ function populateGenreFilter() {
   const genres = Array.from(genreSet).sort((a, b) => a.localeCompare(b));
 
   select.innerHTML = `<option value="">${t("allGenres")}</option>` +
-    genres.map(g => `<option value="${g}">${g}</option>`).join("");
+    genres.map(g => `<option value="${escapeHtml(g)}">${escapeHtml(g)}</option>`).join("");
 
   select.value = genres.includes(previous) ? previous : "";
 }
@@ -3075,10 +2897,10 @@ function fillGrid(grid, list, emptyText) {
   list.forEach(item => {
     const card = document.createElement("div");
     card.className = "card";
-    const watchedCount = countWatchedEpisodes(item) || (parseInt(item.episodes) || 0);
-    const badgeCount = watchedCount;
-    const showSkeleton = !item.poster && !item.notFound;
-    const showNoPoster = item.notFound && !item.poster;
+    const watchedCount = countWatchedEpisodes(item);
+    const badgeCount = watchedCount || item.episodes;
+    const showSkeleton = !item.poster && !item.notFound && !item.custom;
+    const showNoPoster = (item.notFound || item.custom) && !item.poster;
 
     const isWatched = item.status !== "towatch";
     const hasProgress = item.type === "series" && typeof item.totalEpisodes === "number" && item.totalEpisodes > 0;
@@ -3089,7 +2911,7 @@ function fillGrid(grid, list, emptyText) {
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18"></path><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"></path><path d="M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path></svg>
       </button>
       <div class="card-media">
-        ${showSkeleton ? '<div class="skeleton"></div>' : showNoPoster ? noPosterIconMarkup() : `<img src="${item.poster || ''}" alt="${item.title}" onerror="this.replaceWith(createNoPosterNode())">`}
+        ${showSkeleton ? '<div class="skeleton"></div>' : showNoPoster ? noPosterIconMarkup() : `<img src="${escapeHtml(item.poster || '')}" alt="${escapeHtml(item.title)}" onerror="this.replaceWith(createNoPosterNode())">`}
         <div class="status-overlay">
           <button class="status-option${isWatched ? ' active' : ''}" data-action="watched">${t('statusWatched')}<span class="check">✓</span></button>
           <button class="status-option${!isWatched ? ' active' : ''}" data-action="towatch">${t('statusToWatch')}<span class="check">✓</span></button>
@@ -3103,12 +2925,12 @@ function fillGrid(grid, list, emptyText) {
         </div>
       ` : ""}
       <div class="card-body">
-        <p class="card-title">${item.title}</p>
+        <p class="card-title">${escapeHtml(item.title)}</p>
         <div class="card-meta">
-          <span>${item.year || ""}</span>
-          <span>${item.rating ? "IMDb " + item.rating : ""}</span>
+          <span>${escapeHtml(item.year || "")}</span>
+          <span>${item.rating ? "IMDb " + escapeHtml(item.rating) : ""}</span>
         </div>
-        ${item.plot ? `<p class="card-plot">${item.plot}</p>` : ""}
+        ${item.plot ? `<p class="card-plot">${escapeHtml(item.plot)}</p>` : ""}
         ${badgeCount && item.type === "series" ? `<span class="badge">${t('episodesBadge')(badgeCount)}</span>` : ""}
         ${isWatched && item.watchedDate ? `<p class="watched-date">${t('watchedOn')(formatDate(item.watchedDate))}</p>` : ""}
         <button class="status-btn${isWatched ? ' watched' : ''}" data-role="statusToggle" type="button">${isWatched ? t('statusWatched') : t('statusToWatch')}</button>
@@ -3703,11 +3525,31 @@ async function fetchOMDbData(title, type) {
   return finalResult;
 }
 
+let enrichRunning = false;
+let enrichQueued = false;
+
 async function enrichItemsWithOMDb() {
+  if (enrichRunning) {
+    enrichQueued = true;
+    return;
+  }
+  enrichRunning = true;
+  try {
+    await enrichItemsWithOMDbRun();
+  } finally {
+    enrichRunning = false;
+    if (enrichQueued) {
+      enrichQueued = false;
+      enrichItemsWithOMDb();
+    }
+  }
+}
+
+async function enrichItemsWithOMDbRun() {
   if (isOMDbInCooldown()) return;
   for (const item of items) {
     if (omdbLimitReached) return;
-    if (item.poster || item.notFound || item.isCustom) continue;
+    if (item.poster || item.notFound || item.custom) continue;
     try {
       const data = await fetchOMDbData(item.title, item.type);
       if (omdbLimitReached) return;
@@ -4230,7 +4072,7 @@ async function openDetailsModal(item) {
   modal.style.display = "flex";
   setTimeout(() => modal.classList.add("active"), 10);
 
-  if (!item.isCustom && item.genre === undefined) {
+  if (item.genre === undefined) {
     const data = await fetchOMDbData(item.title, item.type);
     if (data.Response !== "False") {
       item.genre = data.Genre !== "N/A" ? data.Genre : "";
@@ -4247,7 +4089,7 @@ async function openDetailsModal(item) {
       item.actors = "";
     }
     saveItems();
-  } else if (!item.isCustom && item.type === "series" && !item.imdbID) {
+  } else if (item.type === "series" && !item.imdbID && !item.custom) {
     const data = await fetchOMDbData(item.title, item.type);
     if (data.Response !== "False" && data.imdbID) {
       item.imdbID = data.imdbID;
@@ -4256,7 +4098,7 @@ async function openDetailsModal(item) {
     }
   }
 
-  if (activeEpisodeItem !== item && item.type === "series") return;
+  if (activeEpisodeItem !== item) return;
   renderDetailsBody(item);
   if (item.type === "series" && item.imdbID) {
     renderSeasonTabs();
@@ -4267,19 +4109,19 @@ async function openDetailsModal(item) {
 
 function renderDetailsBody(item) {
   const body = document.getElementById("detailsModalBody");
-  const posterHtml = item.poster ? `<img class="detail-poster" src="${item.poster}" alt="${item.title}">` : "";
-  const metaHtml = `<div class="detail-meta-row"><span>${item.year || ""}</span>${item.rating ? `<span>IMDb ${item.rating}</span>` : ""}</div>`;
+  const posterHtml = item.poster ? `<img class="detail-poster" src="${escapeHtml(item.poster)}" alt="${escapeHtml(item.title)}" onerror="this.remove()">` : "";
+  const metaHtml = `<div class="detail-meta-row"><span>${escapeHtml(item.year || "")}</span>${item.rating ? `<span>IMDb ${escapeHtml(item.rating)}</span>` : ""}</div>`;
 
   let infoHtml;
-  if (item.genre === undefined && !item.isCustom) {
+  if (item.genre === undefined) {
     infoHtml = `<div class="empty">${t("loadingDetails")}</div>`;
   } else {
     const rows = [
       item.status === "watched" && item.watchedDate ? `<div class="detail-row"><h4>${t("detailsWatchedDate")}</h4><p>${formatDate(item.watchedDate)}</p></div>` : "",
-      item.genre ? `<div class="detail-row"><h4>${t("detailsGenre")}</h4><p>${item.genre}</p></div>` : "",
-      item.director ? `<div class="detail-row"><h4>${t("detailsDirector")}</h4><p>${item.director}</p></div>` : "",
-      item.actors ? `<div class="detail-row"><h4>${t("detailsActors")}</h4><p>${item.actors}</p></div>` : "",
-      item.plot ? `<div class="detail-row"><h4>${t("detailsPlot")}</h4><p>${item.plot}</p></div>` : ""
+      item.genre ? `<div class="detail-row"><h4>${t("detailsGenre")}</h4><p>${escapeHtml(item.genre)}</p></div>` : "",
+      item.director ? `<div class="detail-row"><h4>${t("detailsDirector")}</h4><p>${escapeHtml(item.director)}</p></div>` : "",
+      item.actors ? `<div class="detail-row"><h4>${t("detailsActors")}</h4><p>${escapeHtml(item.actors)}</p></div>` : "",
+      item.plot ? `<div class="detail-row"><h4>${t("detailsPlot")}</h4><p>${escapeHtml(item.plot)}</p></div>` : ""
     ].join("");
     infoHtml = rows || `<div class="empty">${t("noDetails")}</div>`;
   }
@@ -4304,7 +4146,7 @@ function renderDetailsBody(item) {
         </div>
         <div class="episode-list" id="episodeList"></div>
         <p class="episodes-footer" id="episodeModalFooter"></p>
-      ` : `<div class="empty">${t("seriesNotFound")}</div>`}
+      ` : `<div class="empty">${t(item.custom ? "customSeriesNoEpisodes" : "seriesNotFound")}</div>`}
     </div>
   ` : "";
 
@@ -4338,6 +4180,152 @@ function closeDetailsModal() {
 document.getElementById("detailsModalClose").addEventListener("click", closeDetailsModal);
 document.getElementById("detailsModal").addEventListener("click", (e) => {
   if (e.target.id === "detailsModal") closeDetailsModal();
+});
+
+const customModalEl = document.getElementById("customModal");
+const customModalBox = document.getElementById("customModalBox");
+let customModalType = null;
+
+function closeCustomModal() {
+  customModalEl.classList.remove("active");
+  customModalBox.innerHTML = "";
+  customModalType = null;
+}
+
+function openCustomModal(type) {
+  customModalType = type;
+  const isSeries = type === "series";
+  customModalBox.innerHTML = `
+    <h3 class="custom-title">${isSeries ? t("customSeriesTitle") : t("customMovieTitle")}</h3>
+    <div class="custom-field">
+      <label for="customTitle">${t("fieldTitle")} *</label>
+      <input type="text" id="customTitle" autocomplete="off">
+    </div>
+    <div class="custom-row">
+      <div class="custom-field">
+        <label for="customYear">${t("fieldYear")}</label>
+        <input type="text" id="customYear" inputmode="numeric" maxlength="4" autocomplete="off">
+      </div>
+      <div class="custom-field">
+        <label for="customRuntime">${isSeries ? t("fieldRuntimeSeries") : t("fieldRuntimeMovie")}</label>
+        <input type="text" id="customRuntime" inputmode="numeric" autocomplete="off">
+      </div>
+    </div>
+    ${isSeries ? `
+    <div class="custom-field">
+      <label for="customEpisodes">${t("fieldEpisodesWatched")}</label>
+      <input type="text" id="customEpisodes" inputmode="numeric" autocomplete="off">
+    </div>` : `
+    <div class="custom-field">
+      <label for="customDirector">${t("fieldDirector")}</label>
+      <input type="text" id="customDirector" autocomplete="off">
+    </div>`}
+    <div class="custom-field">
+      <label for="customGenre">${t("fieldGenre")}</label>
+      <input type="text" id="customGenre" autocomplete="off">
+    </div>
+    <div class="custom-field">
+      <label for="customPoster">${t("fieldPoster")}</label>
+      <input type="text" id="customPoster" autocomplete="off" placeholder="https://">
+    </div>
+    <div class="custom-field">
+      <label for="customPlot">${t("fieldPlot")}</label>
+      <textarea id="customPlot"></textarea>
+    </div>
+    <div class="custom-field">
+      <label for="customStatus">${t("fieldStatus")}</label>
+      <select id="customStatus">
+        <option value="watched">${t("statusWatched")}</option>
+        <option value="towatch">${t("statusToWatch")}</option>
+      </select>
+    </div>
+    <div class="confirm-actions">
+      <button class="btn-cancel" type="button" id="customCancelBtn">${t("confirmCancel")}</button>
+      <button type="button" id="customSaveBtn">${t("customSave")}</button>
+    </div>
+  `;
+  document.getElementById("customCancelBtn").addEventListener("click", closeCustomModal);
+  document.getElementById("customSaveBtn").addEventListener("click", submitCustomItem);
+  customModalBox.querySelectorAll("input[type='text']").forEach(input => {
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") submitCustomItem();
+    });
+  });
+  customModalEl.classList.add("active");
+  document.getElementById("customTitle").focus();
+}
+
+function submitCustomItem() {
+  const type = customModalType;
+  if (!type) return;
+  const isSeries = type === "series";
+  const value = (id) => {
+    const el = document.getElementById(id);
+    return el ? el.value.trim() : "";
+  };
+
+  const title = value("customTitle");
+  const year = value("customYear");
+  const runtimeRaw = value("customRuntime");
+  const episodesRaw = isSeries ? value("customEpisodes") : "";
+  const poster = value("customPoster");
+
+  if (!title) {
+    toast(t("customTitleRequired"), true);
+    return;
+  }
+  if (year && !/^\d{4}$/.test(year)) {
+    toast(t("customInvalidYear"), true);
+    return;
+  }
+  const isPositiveInt = (raw) => /^\d+$/.test(raw) && parseInt(raw, 10) > 0;
+  if ((runtimeRaw && !isPositiveInt(runtimeRaw)) || (episodesRaw && !isPositiveInt(episodesRaw))) {
+    toast(t("customInvalidNumber"), true);
+    return;
+  }
+  if (poster && !/^https?:\/\//i.test(poster)) {
+    toast(t("customInvalidPoster"), true);
+    return;
+  }
+  const duplicate = items.some(i => i.type === type && (i.title || "").trim().toLowerCase() === title.toLowerCase());
+  if (duplicate) {
+    toast(t("customDuplicate")(title), true);
+    return;
+  }
+
+  const status = value("customStatus") === "towatch" ? "towatch" : "watched";
+  items.push({
+    title,
+    year,
+    rating: "",
+    plot: value("customPlot"),
+    genre: value("customGenre"),
+    director: isSeries ? "" : value("customDirector"),
+    actors: "",
+    poster,
+    episodes: episodesRaw ? parseInt(episodesRaw, 10) : "",
+    runtime: runtimeRaw ? parseInt(runtimeRaw, 10) : null,
+    type,
+    status,
+    watchedDate: status === "watched" ? new Date().toISOString() : undefined,
+    custom: true,
+    seasonCache: {},
+    watchedEpisodes: {}
+  });
+
+  saveItems();
+  render(document.getElementById("liveSearch").value);
+  toast(t("addedToast")(title));
+  closeCustomModal();
+}
+
+document.getElementById("addCustomSeriesBtn").addEventListener("click", () => openCustomModal("series"));
+document.getElementById("addCustomMovieBtn").addEventListener("click", () => openCustomModal("movie"));
+customModalEl.addEventListener("click", (e) => {
+  if (e.target === customModalEl) closeCustomModal();
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && customModalEl.classList.contains("active")) closeCustomModal();
 });
 
 applyLanguage();
