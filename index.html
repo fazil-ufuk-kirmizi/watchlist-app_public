@@ -1020,6 +1020,33 @@
     border-color: rgba(255, 213, 74, 0.2);
   }
 
+  .next-ep-btn {
+    width: 100%;
+    margin: 12px 0 8px;
+    padding: 10px 12px;
+    font-size: 12px;
+    font-weight: 700;
+    background: transparent;
+    color: var(--primary);
+    border: 1px dashed rgba(255, 213, 74, 0.35);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+  }
+
+  .next-ep-btn:hover:not(:disabled) {
+    background: rgba(255, 213, 74, 0.08);
+    border-color: var(--primary);
+  }
+
+  .next-ep-btn:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+
+  .details-progress {
+    padding: 0 0 12px;
+  }
+
   .modal-overlay {
     display: none;
     position: fixed;
@@ -1943,13 +1970,19 @@ const STRINGS = {
     fieldRuntimeMovie: "Süre (dk)",
     fieldRuntimeSeries: "Bölüm süresi (dk)",
     fieldEpisodesWatched: "İzlenen bölüm sayısı",
+    fieldEpisodesTotal: "Toplam bölüm sayısı",
+    customWatchedExceedsTotal: "İzlenen bölüm sayısı toplam bölüm sayısından büyük olamaz.",
+    nextEpisodeBtn: (label) => label ? `Sıradaki bölüm: ${label}` : "Sıradaki bölüm",
+    nextEpisodeToast: (title, label) => `${title}: ${label} izlendi olarak işaretlendi.`,
+    nextEpisodeDone: "Tüm bölümler zaten izlendi.",
+    nextEpisodeFailed: "Bölüm bilgisi alınamadı.",
     fieldPoster: "Poster bağlantısı (URL)",
     fieldPlot: "Konu",
     fieldStatus: "Durum",
     customSave: "Ekle",
     customTitleRequired: "Ad alanı zorunlu.",
     customInvalidYear: "Yıl 4 haneli bir sayı olmalı.",
-    customInvalidNumber: "Süre ve bölüm sayısı pozitif tam sayı olmalı.",
+    customInvalidNumber: "Süre ve toplam bölüm sayısı pozitif, izlenen bölüm sayısı sıfır veya pozitif tam sayı olmalı.",
     customInvalidPoster: "Poster bağlantısı http:// veya https:// ile başlamalı.",
     customDuplicate: (title) => `"${title}" zaten listende var.`,
     customSeriesNoEpisodes: "Elle eklenen dizilerde bölüm detayı yok. İzlenen bölüm sayısı kartta ve istatistiklerde görünür.",
@@ -2071,13 +2104,19 @@ const STRINGS = {
     fieldRuntimeMovie: "Runtime (min)",
     fieldRuntimeSeries: "Episode runtime (min)",
     fieldEpisodesWatched: "Episodes watched",
+    fieldEpisodesTotal: "Total episodes",
+    customWatchedExceedsTotal: "Watched episodes cannot exceed total episodes.",
+    nextEpisodeBtn: (label) => label ? `Next episode: ${label}` : "Next episode",
+    nextEpisodeToast: (title, label) => `${title}: ${label} marked as watched.`,
+    nextEpisodeDone: "All episodes are already watched.",
+    nextEpisodeFailed: "Could not load episode data.",
     fieldPoster: "Poster URL",
     fieldPlot: "Plot",
     fieldStatus: "Status",
     customSave: "Add",
     customTitleRequired: "Title is required.",
     customInvalidYear: "Year must be a 4-digit number.",
-    customInvalidNumber: "Runtime and episode count must be positive whole numbers.",
+    customInvalidNumber: "Runtime and total episodes must be positive whole numbers; watched episodes must be zero or a positive whole number.",
     customInvalidPoster: "Poster URL must start with http:// or https://.",
     customDuplicate: (title) => `"${title}" is already in your list.`,
     customSeriesNoEpisodes: "Manually added series have no episode details. The watched episode count shows on the card and in the stats.",
@@ -2246,6 +2285,7 @@ function mergeItemPair(existing, incoming) {
       ? "watched"
       : (existing.status || incoming.status);
   }
+  if (merged.custom && mergedType === "series" && newer.status) merged.status = newer.status;
   merged.watchedDate = merged.status === "watched" ? (newer.watchedDate || older.watchedDate) : undefined;
 
   const seasonCache = {};
@@ -2257,7 +2297,9 @@ function mergeItemPair(existing, incoming) {
     });
   merged.seasonCache = seasonCache;
 
-  merged.totalEpisodes = Math.max(existing.totalEpisodes || 0, incoming.totalEpisodes || 0) || undefined;
+  merged.totalEpisodes = merged.custom
+    ? newer.totalEpisodes
+    : (Math.max(existing.totalEpisodes || 0, incoming.totalEpisodes || 0) || undefined);
   merged.totalSeasons = Math.max(existing.totalSeasons || 0, incoming.totalSeasons || 0) || undefined;
   merged.id = canonicalId(merged);
 
@@ -2313,7 +2355,7 @@ const updatedAtBaseline = new WeakMap();
 
 function contentSignature(item) {
   const { updatedAt, seasonCache, notFound, totalEpisodes, ...rest } = item;
-  return stableStringify(rest);
+  return stableStringify(item.custom ? { ...rest, totalEpisodes } : rest);
 }
 
 function seedUpdatedAtBaseline() {
@@ -3296,6 +3338,7 @@ function fillGrid(grid, list, emptyText) {
     const isWatched = item.status !== "towatch";
     const hasProgress = item.type === "series" && typeof item.totalEpisodes === "number" && item.totalEpisodes > 0;
     const progressPercent = hasProgress ? Math.min(100, Math.round((watchedCount / item.totalEpisodes) * 100)) : 0;
+    const nextLabel = getNextEpisodeLabel(item);
 
     card.innerHTML = `
       ${item.custom ? `<button class="edit-btn" type="button" title="${t('editBtnTitle')}" aria-label="${t('editBtnTitle')}">
@@ -3327,6 +3370,7 @@ function fillGrid(grid, list, emptyText) {
         ${item.plot ? `<p class="card-plot">${escapeHtml(item.plot)}</p>` : ""}
         ${badgeCount && item.type === "series" ? `<span class="badge">${t('episodesBadge')(badgeCount)}</span>` : ""}
         ${isWatched && item.watchedDate ? `<p class="watched-date">${t('watchedOn')(formatDate(item.watchedDate))}</p>` : ""}
+        ${nextLabel !== null ? `<button class="next-ep-btn" type="button" data-role="nextEpisode">${t('nextEpisodeBtn')(nextLabel)}</button>` : ""}
         <button class="status-btn${isWatched ? ' watched' : ''}" data-role="statusToggle" type="button">${isWatched ? t('statusWatched') : t('statusToWatch')}</button>
       </div>
     `;
@@ -3339,6 +3383,15 @@ function fillGrid(grid, list, emptyText) {
       editBtn.addEventListener("click", (e) => {
         e.stopPropagation();
         openCustomModal(item.type, item);
+      });
+    }
+    const nextBtn = card.querySelector('[data-role="nextEpisode"]');
+    if (nextBtn) {
+      nextBtn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        nextBtn.disabled = true;
+        const ok = await markNextEpisode(item);
+        if (!ok) nextBtn.disabled = false;
       });
     }
     card.querySelector('[data-role="statusToggle"]').addEventListener("click", (e) => {
@@ -3445,8 +3498,101 @@ async function removeItem(item) {
 }
 
 function countWatchedEpisodes(item) {
+  if (item.custom && item.type === "series") return parseInt(item.episodes, 10) || 0;
   if (!item.watchedEpisodes) return 0;
   return Object.values(item.watchedEpisodes).reduce((sum, eps) => sum + eps.length, 0);
+}
+
+function getNextEpisodeLabel(item) {
+  if (item.type !== "series") return null;
+  const watched = countWatchedEpisodes(item) || parseInt(item.episodes, 10) || 0;
+  const total = typeof item.totalEpisodes === "number" ? item.totalEpisodes : 0;
+  if (total > 0 && watched >= total) return null;
+  if (item.custom) return String(watched + 1);
+  if (!item.imdbID) return null;
+  const marked = item.watchedEpisodes || {};
+  const hasMarked = Object.values(marked).some(list => list.length > 0);
+  if (!hasMarked && watched > 0) return "";
+  const seasons = item.totalSeasons || 1;
+  for (let s = 1; s <= seasons; s++) {
+    const cached = item.seasonCache && item.seasonCache[s];
+    if (!cached) return hasMarked && s === 1 ? "" : `S${s}E1`;
+    const done = marked[s] || [];
+    const next = cached.map(ep => parseInt(ep.Episode, 10)).find(n => !isNaN(n) && !done.includes(n));
+    if (next !== undefined) return `S${s}E${next}`;
+  }
+  return item.totalSeasons ? null : "";
+}
+
+async function ensureSeasonCache(item, season) {
+  if (!item.seasonCache) item.seasonCache = {};
+  if (item.seasonCache[season]) return item.seasonCache[season];
+  if (omdbLimitReached) return null;
+  const data = await omdbFetch({ i: item.imdbID, Season: season });
+  if (data.Response === "False" || !data.Episodes) return null;
+  item.seasonCache[season] = data.Episodes;
+  return data.Episodes;
+}
+
+async function markNextEpisode(item) {
+  if (!item.watchedEpisodes) item.watchedEpisodes = {};
+  let label;
+  if (item.custom) {
+    const next = countWatchedEpisodes(item) + 1;
+    const total = typeof item.totalEpisodes === "number" ? item.totalEpisodes : 0;
+    if (total > 0 && next > total) {
+      toast(t("nextEpisodeDone"));
+      return false;
+    }
+    item.episodes = next;
+    label = String(next);
+  } else {
+    try {
+      const draft = JSON.parse(JSON.stringify(item.watchedEpisodes));
+      let skip = Object.values(draft).some(list => list.length > 0) ? 0 : (parseInt(item.episodes, 10) || 0);
+      const seasons = item.totalSeasons || 1;
+      let found = null;
+      for (let s = 1; s <= seasons && !found; s++) {
+        const cached = await ensureSeasonCache(item, s);
+        if (!cached) {
+          toast(t("nextEpisodeFailed"), true);
+          return false;
+        }
+        const list = draft[s] || (draft[s] = []);
+        for (const ep of cached) {
+          const n = parseInt(ep.Episode, 10);
+          if (isNaN(n)) continue;
+          if (skip > 0) {
+            if (!list.includes(n)) list.push(n);
+            skip--;
+            continue;
+          }
+          if (!list.includes(n)) {
+            list.push(n);
+            found = { s, n };
+            break;
+          }
+        }
+        list.sort((a, b) => a - b);
+      }
+      if (!found) {
+        toast(t("nextEpisodeDone"));
+        return false;
+      }
+      item.watchedEpisodes = draft;
+      label = `S${found.s}E${found.n}`;
+    } catch (err) {
+      toast(t("nextEpisodeFailed"), true);
+      return false;
+    }
+  }
+  item.watchedDate = todayIso();
+  promoteSeriesToWatched(item);
+  saveItems();
+  refreshActiveDetails(item);
+  render(document.getElementById("liveSearch").value);
+  toast(t("nextEpisodeToast")(item.title, label));
+  return true;
 }
 
 function updateStats() {
@@ -4586,6 +4732,87 @@ async function openDetailsModal(item) {
   }
 }
 
+function customProgressHtml(item) {
+  const watched = countWatchedEpisodes(item);
+  const total = typeof item.totalEpisodes === "number" ? item.totalEpisodes : "";
+  return `
+    <div class="custom-row">
+      <div class="custom-field">
+        <label for="detailsTotalEpisodes">${t("fieldEpisodesTotal")}</label>
+        <input type="text" id="detailsTotalEpisodes" inputmode="numeric" autocomplete="off" value="${total}">
+      </div>
+      <div class="custom-field">
+        <label for="detailsWatchedEpisodes">${t("fieldEpisodesWatched")}</label>
+        <input type="text" id="detailsWatchedEpisodes" inputmode="numeric" autocomplete="off" value="${watched}">
+      </div>
+    </div>
+    <div class="progress-wrap details-progress" id="detailsProgress"></div>
+    <div id="detailsNextWrap"></div>
+  `;
+}
+
+function updateCustomProgressView(item) {
+  const wrap = document.getElementById("detailsProgress");
+  const nextWrap = document.getElementById("detailsNextWrap");
+  if (!wrap || !nextWrap) return;
+  const watched = countWatchedEpisodes(item);
+  const total = typeof item.totalEpisodes === "number" ? item.totalEpisodes : 0;
+  if (total > 0) {
+    const percent = Math.min(100, Math.round((watched / total) * 100));
+    wrap.innerHTML = `<div class="progress-bar"><div class="progress-bar-fill" style="width:${percent}%"></div></div><div class="progress-label">${t("progressLabel")(watched, total, percent)}</div>`;
+  } else {
+    wrap.innerHTML = "";
+  }
+  const label = getNextEpisodeLabel(item);
+  nextWrap.innerHTML = label !== null ? `<button class="next-ep-btn" type="button" id="detailsNextEpisode">${t("nextEpisodeBtn")(label)}</button>` : "";
+  const btn = document.getElementById("detailsNextEpisode");
+  if (btn) {
+    btn.addEventListener("click", async () => {
+      btn.disabled = true;
+      const ok = await markNextEpisode(item);
+      if (!ok) btn.disabled = false;
+    });
+  }
+}
+
+function setupCustomProgress(item) {
+  const watchedInput = document.getElementById("detailsWatchedEpisodes");
+  const totalInput = document.getElementById("detailsTotalEpisodes");
+  if (!watchedInput || !totalInput) return;
+  const revert = () => {
+    watchedInput.value = countWatchedEpisodes(item);
+    totalInput.value = typeof item.totalEpisodes === "number" ? item.totalEpisodes : "";
+  };
+  const commit = () => {
+    const watchedRaw = watchedInput.value.trim();
+    const totalRaw = totalInput.value.trim();
+    const watched = watchedRaw ? parseInt(watchedRaw, 10) : 0;
+    const total = totalRaw ? parseInt(totalRaw, 10) : 0;
+    if (!/^\d*$/.test(watchedRaw) || !/^\d*$/.test(totalRaw) || (totalRaw && total < 1)) {
+      toast(t("customInvalidNumber"), true);
+      revert();
+      return;
+    }
+    if (total > 0 && watched > total) {
+      toast(t("customWatchedExceedsTotal"), true);
+      revert();
+      return;
+    }
+    const prevWatched = countWatchedEpisodes(item);
+    item.episodes = watched > 0 ? watched : "";
+    item.totalEpisodes = total > 0 ? total : undefined;
+    if (watched > prevWatched) item.watchedDate = todayIso();
+    const promoted = watched > 0 && promoteSeriesToWatched(item);
+    saveItems();
+    if (promoted) refreshActiveDetails(item);
+    else updateCustomProgressView(item);
+    render(document.getElementById("liveSearch").value);
+  };
+  watchedInput.addEventListener("change", commit);
+  totalInput.addEventListener("change", commit);
+  updateCustomProgressView(item);
+}
+
 function renderDetailsBody(item) {
   const body = document.getElementById("detailsModalBody");
   const posterHtml = item.poster ? `<img class="detail-poster" src="${escapeHtml(item.poster)}" alt="${escapeHtml(item.title)}" onerror="this.remove()">` : "";
@@ -4625,11 +4852,12 @@ function renderDetailsBody(item) {
         </div>
         <div class="episode-list" id="episodeList"></div>
         <p class="episodes-footer" id="episodeModalFooter"></p>
-      ` : `<div class="empty">${t(item.custom ? "customSeriesNoEpisodes" : "seriesNotFound")}</div>`}
+      ` : (item.custom ? customProgressHtml(item) : `<div class="empty">${t("seriesNotFound")}</div>`)}
     </div>
   ` : "";
 
   body.innerHTML = `${posterHtml}${metaHtml}${infoHtml}${episodesHtml}`;
+  if (item.type === "series" && item.custom && !item.imdbID) setupCustomProgress(item);
 
   const watchedDateInput = document.getElementById("detailsWatchedDateInput");
   if (watchedDateInput) {
@@ -4721,9 +4949,15 @@ function openCustomModal(type, editItem) {
       </div>
     </div>
     ${isSeries ? `
-    <div class="custom-field" id="customEpisodesField"${startStatus === "watched" ? "" : ' style="display:none"'}>
-      <label for="customEpisodes">${t("fieldEpisodesWatched")}</label>
-      <input type="text" id="customEpisodes" inputmode="numeric" autocomplete="off" value="${v("episodes")}">
+    <div class="custom-row">
+      <div class="custom-field">
+        <label for="customTotalEpisodes">${t("fieldEpisodesTotal")}</label>
+        <input type="text" id="customTotalEpisodes" inputmode="numeric" autocomplete="off" value="${v("totalEpisodes")}">
+      </div>
+      <div class="custom-field">
+        <label for="customEpisodes">${t("fieldEpisodesWatched")}</label>
+        <input type="text" id="customEpisodes" inputmode="numeric" autocomplete="off" value="${v("episodes")}">
+      </div>
     </div>` : `
     <div class="custom-field">
       <label for="customDirector">${t("fieldDirector")}</label>
@@ -4762,9 +4996,17 @@ function openCustomModal(type, editItem) {
   document.getElementById("customStatus").addEventListener("change", (e) => {
     const display = e.target.value === "watched" ? "" : "none";
     document.getElementById("customDateField").style.display = display;
-    const epField = document.getElementById("customEpisodesField");
-    if (epField) epField.style.display = display;
   });
+  const watchedInput = document.getElementById("customEpisodes");
+  if (watchedInput) {
+    watchedInput.addEventListener("input", () => {
+      const statusSelect = document.getElementById("customStatus");
+      if ((parseInt(watchedInput.value, 10) || 0) > 0 && statusSelect.value !== "watched") {
+        statusSelect.value = "watched";
+        statusSelect.dispatchEvent(new Event("change"));
+      }
+    });
+  }
   customModalBox.querySelectorAll("input[type='text']").forEach(input => {
     input.addEventListener("keydown", (e) => {
       if (e.key === "Enter") submitCustomItem();
@@ -4787,8 +5029,9 @@ function submitCustomItem() {
   const title = value("customTitle");
   const year = value("customYear");
   const runtimeRaw = value("customRuntime");
-  const status = value("customStatus") === "towatch" ? "towatch" : "watched";
-  const episodesRaw = isSeries && status === "watched" ? value("customEpisodes") : "";
+  let status = value("customStatus") === "towatch" ? "towatch" : "watched";
+  const episodesRaw = isSeries ? value("customEpisodes") : "";
+  const totalRaw = isSeries ? value("customTotalEpisodes") : "";
   const poster = value("customPoster");
 
   if (!title) {
@@ -4800,10 +5043,17 @@ function submitCustomItem() {
     return;
   }
   const isPositiveInt = (raw) => /^\d+$/.test(raw) && parseInt(raw, 10) > 0;
-  if ((runtimeRaw && !isPositiveInt(runtimeRaw)) || (episodesRaw && !isPositiveInt(episodesRaw))) {
+  if ((runtimeRaw && !isPositiveInt(runtimeRaw)) || (totalRaw && !isPositiveInt(totalRaw)) || (episodesRaw && !/^\d+$/.test(episodesRaw))) {
     toast(t("customInvalidNumber"), true);
     return;
   }
+  const watchedCount = episodesRaw ? parseInt(episodesRaw, 10) : 0;
+  const totalCount = totalRaw ? parseInt(totalRaw, 10) : 0;
+  if (totalCount > 0 && watchedCount > totalCount) {
+    toast(t("customWatchedExceedsTotal"), true);
+    return;
+  }
+  if (isSeries && watchedCount > 0) status = "watched";
   if (poster && !/^https?:\/\//i.test(poster)) {
     toast(t("customInvalidPoster"), true);
     return;
@@ -4835,11 +5085,12 @@ function submitCustomItem() {
     genre: value("customGenre"),
     director: isSeries ? "" : value("customDirector"),
     poster,
-    episodes: episodesRaw ? parseInt(episodesRaw, 10) : "",
+    episodes: watchedCount > 0 ? watchedCount : "",
     runtime: runtimeRaw ? parseInt(runtimeRaw, 10) : null,
     status,
     watchedDate
   };
+  if (isSeries) fields.totalEpisodes = totalCount > 0 ? totalCount : undefined;
 
   if (editItem) {
     Object.assign(editItem, fields);
