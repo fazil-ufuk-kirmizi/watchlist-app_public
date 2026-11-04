@@ -1026,6 +1026,10 @@
     padding: 10px 12px;
     font-size: 12px;
     font-weight: 700;
+    line-height: 1.3;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: center;
     background: transparent;
     color: var(--primary);
     border: 1px dashed rgba(255, 213, 74, 0.35);
@@ -1041,6 +1045,40 @@
   .next-ep-btn:disabled {
     opacity: 0.5;
     cursor: default;
+  }
+
+  .my-rating {
+    margin-top: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--primary);
+  }
+
+  .my-rating-grid {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    gap: 6px;
+  }
+
+  .my-rating-btn {
+    padding: 8px 0;
+    font-size: 13px;
+    font-weight: 700;
+    background: transparent;
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+  }
+
+  .my-rating-btn.active {
+    background: rgba(255, 213, 74, 0.15);
+    color: var(--primary);
+    border-color: var(--primary);
+  }
+
+  @media (max-width: 480px) {
+    .my-rating-grid { grid-template-columns: repeat(5, 1fr); }
   }
 
   .details-progress {
@@ -1644,6 +1682,7 @@
     .card-title { font-size: 14px; }
     .card-meta { font-size: 12px; }
     .card-plot { font-size: 12px; }
+    .next-ep-btn { font-size: 11px; padding: 8px 6px; margin: 10px 0 6px; }
     .delete-btn { opacity: 1; transform: translateY(0); width: 30px; height: 30px; }
     .delete-btn svg { width: 14px; height: 14px; }
     .edit-btn { opacity: 1; transform: translateY(0); width: 30px; height: 30px; right: 48px; }
@@ -1929,6 +1968,7 @@ const STRINGS = {
     loadingDetails: "Detaylar yükleniyor...",
     noDetails: "Bu yapım için detay bulunamadı.",
     detailsWatchedDate: "İzlenme Tarihi",
+    myRatingTitle: "Kişisel Puanım",
     watchedOn: (date) => `İzlendi: ${date}`,
     progressLabel: (watched, total, percent) => `${watched}/${total} bölüm · %${percent}`,
     askEarlierEpisodesWatched: "Bu bölümden önceki bölümleri daha önce izledin mi? İzlediysen hepsini izlendi olarak işaretleyebilirim.",
@@ -2063,6 +2103,7 @@ const STRINGS = {
     loadingDetails: "Loading details...",
     noDetails: "No details found for this title.",
     detailsWatchedDate: "Watched On",
+    myRatingTitle: "My Rating",
     watchedOn: (date) => `Watched: ${date}`,
     progressLabel: (watched, total, percent) => `${watched}/${total} episodes · ${percent}%`,
     askEarlierEpisodesWatched: "Did you already watch the episodes before this one? If so, I can mark them all as watched.",
@@ -2886,7 +2927,7 @@ function setGithubStatus(text) {
 function buildWatchlistWorkbookBase64() {
   const header = [
     "Başlık", "Tür", "Yıl", "Durum", "IMDb Puanı",
-    "İzlenme Tarihi", "Toplam Sezon", "İzlenen Bölüm Sayısı", "IMDb ID"
+    "İzlenme Tarihi", "Toplam Sezon", "İzlenen Bölüm Sayısı", "IMDb ID", "Kişisel Puan"
   ];
   const rows = items.map(item => {
     const watchedEpisodeCount = countWatchedEpisodes(item) || parseInt(item.episodes, 10) || 0;
@@ -2899,13 +2940,14 @@ function buildWatchlistWorkbookBase64() {
       item.watchedDate ? formatDate(item.watchedDate) : "",
       item.totalSeasons || "",
       item.type === "series" ? watchedEpisodeCount : "",
-      item.imdbID || ""
+      item.imdbID || "",
+      item.myRating || ""
     ];
   });
   const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
   ws["!cols"] = [
     { wch: 32 }, { wch: 8 }, { wch: 8 }, { wch: 14 }, { wch: 10 },
-    { wch: 14 }, { wch: 12 }, { wch: 20 }, { wch: 14 }
+    { wch: 14 }, { wch: 12 }, { wch: 20 }, { wch: 14 }, { wch: 12 }
   ];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Watchlist");
@@ -3367,6 +3409,7 @@ function fillGrid(grid, list, emptyText) {
           <span>${escapeHtml(item.year || "")}</span>
           <span>${item.rating ? "IMDb " + escapeHtml(item.rating) : ""}</span>
         </div>
+        ${item.myRating ? `<div class="my-rating">${t('myRatingTitle')}: ${item.myRating}/10</div>` : ""}
         ${item.plot ? `<p class="card-plot">${escapeHtml(item.plot)}</p>` : ""}
         ${badgeCount && item.type === "series" ? `<span class="badge">${t('episodesBadge')(badgeCount)}</span>` : ""}
         ${isWatched && item.watchedDate ? `<p class="watched-date">${t('watchedOn')(formatDate(item.watchedDate))}</p>` : ""}
@@ -4856,7 +4899,9 @@ function renderDetailsBody(item) {
     </div>
   ` : "";
 
-  body.innerHTML = `${posterHtml}${metaHtml}${infoHtml}${episodesHtml}`;
+  const ratingHtml = item.status !== "towatch" ? `<div class="detail-row"><h4>${t("myRatingTitle")}</h4><div class="my-rating-grid" id="myRatingGrid">${Array.from({ length: 10 }, (_, i) => `<button type="button" class="my-rating-btn${item.myRating === i + 1 ? " active" : ""}" data-value="${i + 1}">${i + 1}</button>`).join("")}</div></div>` : "";
+
+  body.innerHTML = `${posterHtml}${metaHtml}${ratingHtml}${infoHtml}${episodesHtml}`;
   if (item.type === "series" && item.custom && !item.imdbID) setupCustomProgress(item);
 
   const watchedDateInput = document.getElementById("detailsWatchedDateInput");
@@ -4870,6 +4915,21 @@ function renderDetailsBody(item) {
       }
       item.watchedDate = iso;
       saveItems();
+      render(document.getElementById("liveSearch").value);
+    });
+  }
+
+  const ratingGrid = document.getElementById("myRatingGrid");
+  if (ratingGrid) {
+    ratingGrid.addEventListener("click", (e) => {
+      const btn = e.target.closest(".my-rating-btn");
+      if (!btn) return;
+      const value = parseInt(btn.dataset.value, 10);
+      item.myRating = item.myRating === value ? 0 : value;
+      saveItems();
+      ratingGrid.querySelectorAll(".my-rating-btn").forEach(b => {
+        b.classList.toggle("active", parseInt(b.dataset.value, 10) === item.myRating);
+      });
       render(document.getElementById("liveSearch").value);
     });
   }
