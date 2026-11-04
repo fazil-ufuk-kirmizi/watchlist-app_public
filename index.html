@@ -4899,7 +4899,7 @@ function renderDetailsBody(item) {
     </div>
   ` : "";
 
-  const ratingHtml = item.status !== "towatch" ? `<div class="detail-row"><h4>${t("myRatingTitle")}</h4><div class="my-rating-grid" id="myRatingGrid">${Array.from({ length: 10 }, (_, i) => `<button type="button" class="my-rating-btn${item.myRating === i + 1 ? " active" : ""}" data-value="${i + 1}">${i + 1}</button>`).join("")}</div></div>` : "";
+  const ratingHtml = item.status !== "towatch" ? `<div class="detail-row"><h4>${t("myRatingTitle")}</h4><div class="my-rating-grid" id="myRatingGrid">${Array.from({ length: 10 }, (_, i) => `<button type="button" class="my-rating-btn${item.myRating >= i + 1 ? " active" : ""}" data-value="${i + 1}">${i + 1}</button>`).join("")}</div></div>` : "";
 
   body.innerHTML = `${posterHtml}${metaHtml}${ratingHtml}${infoHtml}${episodesHtml}`;
   if (item.type === "series" && item.custom && !item.imdbID) setupCustomProgress(item);
@@ -4928,7 +4928,7 @@ function renderDetailsBody(item) {
       item.myRating = item.myRating === value ? 0 : value;
       saveItems();
       ratingGrid.querySelectorAll(".my-rating-btn").forEach(b => {
-        b.classList.toggle("active", parseInt(b.dataset.value, 10) === item.myRating);
+        b.classList.toggle("active", parseInt(b.dataset.value, 10) <= item.myRating);
       });
       render(document.getElementById("liveSearch").value);
     });
