@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Cache-Control" content="no-cache, must-revalidate">
+<meta name="theme-color" content="#04050a">
 <title>My Watch List</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2014,6 +2016,22 @@
   }
 
   .settings-pop::-webkit-scrollbar-thumb:hover { background: rgba(77, 163, 255, 0.5); }
+
+  .auth-overlay {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    align-items: flex-start;
+    height: 100vh;
+    height: 100dvh;
+  }
+
+  .auth-card { margin: auto; }
+
+  @media (max-width: 768px) {
+    .auth-overlay { padding: 16px; }
+    .auth-card { padding: 24px 20px; }
+    .auth-or { margin: 14px 0 12px; }
+  }
 
   .auth-or { display: flex; align-items: center; gap: 12px; margin: 18px 0 14px; color: var(--text-dim); font-size: 12px; }
   .auth-or::before, .auth-or::after { content: ""; flex: 1; height: 1px; background: var(--border); }
