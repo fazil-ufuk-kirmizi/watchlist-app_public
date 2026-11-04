@@ -2058,12 +2058,6 @@
     to { opacity: 1; transform: translate3d(110%, 0, 0); }
   }
 
-  @keyframes glareScroll {
-    0% { opacity: 0; transform: translate3d(-110%, 0, 0); }
-    25% { opacity: 0.85; }
-    75% { opacity: 0.85; }
-    100% { opacity: 0; transform: translate3d(110%, 0, 0); }
-  }
 
   @keyframes liquidDrop {
     0% { opacity: 0; transform: translateY(-24px) scale(0.96); }
@@ -2338,22 +2332,6 @@
 
     .card:active::after, .stats > div:active::after {
       animation: glareSweep 0.8s cubic-bezier(0.22, 1, 0.36, 1);
-    }
-  }
-
-  @supports (animation-timeline: view()) {
-    @media (hover: none) and (prefers-reduced-motion: no-preference) {
-      .card::after, .stats > div::after {
-        animation: glareScroll linear both;
-        animation-timeline: view();
-        animation-range: entry 0% exit 100%;
-      }
-
-      .card:active::after, .stats > div:active::after {
-        animation: glareSweep 0.8s cubic-bezier(0.22, 1, 0.36, 1);
-        animation-timeline: auto;
-        animation-range: normal;
-      }
     }
   }
 
