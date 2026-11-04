@@ -2028,10 +2028,41 @@
     }
   }
 
-  @keyframes liquidIn {
-    0% { opacity: 0; transform: scale(0.9) translateY(-14px); }
-    55% { opacity: 1; transform: scale(1.025) translateY(2px); }
-    100% { opacity: 1; transform: scale(1) translateY(0); }
+  @keyframes liquidMenu {
+    0% { opacity: 0; transform: scale(0.3, 0.12) translateY(-6px); }
+    45% { opacity: 1; transform: scale(1.04, 1.06) translateY(2px); }
+    72% { opacity: 1; transform: scale(0.99, 0.985); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+
+  @keyframes liquidPop {
+    0% { opacity: 0; transform: scale(0.55, 0.3); }
+    50% { opacity: 1; transform: scale(1.04, 1.07); }
+    75% { opacity: 1; transform: scale(0.99, 0.98); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+
+  @keyframes liquidDrop2 {
+    0% { opacity: 0; transform: scaleY(0.5) translateY(-6px); }
+    55% { opacity: 1; transform: scaleY(1.03); }
+    100% { opacity: 1; transform: scaleY(1); }
+  }
+
+  @keyframes liquidItem {
+    from { opacity: 0; transform: translateY(12px) scale(0.95); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  @keyframes glareSweep {
+    from { opacity: 1; transform: translate3d(-110%, 0, 0); }
+    to { opacity: 1; transform: translate3d(110%, 0, 0); }
+  }
+
+  @keyframes glareScroll {
+    0% { opacity: 0; transform: translate3d(-110%, 0, 0); }
+    25% { opacity: 0.85; }
+    75% { opacity: 0.85; }
+    100% { opacity: 0; transform: translate3d(110%, 0, 0); }
   }
 
   @keyframes liquidDrop {
@@ -2045,8 +2076,215 @@
       animation: liquidDrop 0.8s cubic-bezier(0.22, 1, 0.36, 1) backwards;
     }
 
-    .settings-pop, .auth-card, .confirm-box, .custom-box {
-      animation: liquidIn 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+    .settings-pop {
+      transform-origin: top right;
+      animation: liquidMenu 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .auth-card, .confirm-box, .custom-box {
+      transform-origin: center;
+      animation: liquidPop 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .search-results.active {
+      transform-origin: top center;
+      animation: liquidDrop2 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .settings-pop > *, .auth-card > *, .confirm-box > *, .custom-box > *, .modal-box > *, .status-overlay.active > .status-option {
+      animation: liquidItem 0.55s cubic-bezier(0.34, 1.4, 0.64, 1) backwards;
+    }
+
+    .settings-pop > *:nth-child(1) {
+      animation-delay: 0.12s;
+    }
+
+    .settings-pop > *:nth-child(2) {
+      animation-delay: 0.16s;
+    }
+
+    .settings-pop > *:nth-child(3) {
+      animation-delay: 0.21s;
+    }
+
+    .settings-pop > *:nth-child(4) {
+      animation-delay: 0.26s;
+    }
+
+    .settings-pop > *:nth-child(5) {
+      animation-delay: 0.30s;
+    }
+
+    .settings-pop > *:nth-child(6) {
+      animation-delay: 0.34s;
+    }
+
+    .settings-pop > *:nth-child(7) {
+      animation-delay: 0.39s;
+    }
+
+    .settings-pop > *:nth-child(8) {
+      animation-delay: 0.43s;
+    }
+
+    .auth-card > *:nth-child(1) {
+      animation-delay: 0.12s;
+    }
+
+    .auth-card > *:nth-child(2) {
+      animation-delay: 0.16s;
+    }
+
+    .auth-card > *:nth-child(3) {
+      animation-delay: 0.21s;
+    }
+
+    .auth-card > *:nth-child(4) {
+      animation-delay: 0.26s;
+    }
+
+    .auth-card > *:nth-child(5) {
+      animation-delay: 0.30s;
+    }
+
+    .auth-card > *:nth-child(6) {
+      animation-delay: 0.34s;
+    }
+
+    .auth-card > *:nth-child(7) {
+      animation-delay: 0.39s;
+    }
+
+    .auth-card > *:nth-child(8) {
+      animation-delay: 0.43s;
+    }
+
+    .confirm-box > *:nth-child(1) {
+      animation-delay: 0.12s;
+    }
+
+    .confirm-box > *:nth-child(2) {
+      animation-delay: 0.16s;
+    }
+
+    .confirm-box > *:nth-child(3) {
+      animation-delay: 0.21s;
+    }
+
+    .confirm-box > *:nth-child(4) {
+      animation-delay: 0.26s;
+    }
+
+    .confirm-box > *:nth-child(5) {
+      animation-delay: 0.30s;
+    }
+
+    .confirm-box > *:nth-child(6) {
+      animation-delay: 0.34s;
+    }
+
+    .confirm-box > *:nth-child(7) {
+      animation-delay: 0.39s;
+    }
+
+    .confirm-box > *:nth-child(8) {
+      animation-delay: 0.43s;
+    }
+
+    .custom-box > *:nth-child(1) {
+      animation-delay: 0.12s;
+    }
+
+    .custom-box > *:nth-child(2) {
+      animation-delay: 0.16s;
+    }
+
+    .custom-box > *:nth-child(3) {
+      animation-delay: 0.21s;
+    }
+
+    .custom-box > *:nth-child(4) {
+      animation-delay: 0.26s;
+    }
+
+    .custom-box > *:nth-child(5) {
+      animation-delay: 0.30s;
+    }
+
+    .custom-box > *:nth-child(6) {
+      animation-delay: 0.34s;
+    }
+
+    .custom-box > *:nth-child(7) {
+      animation-delay: 0.39s;
+    }
+
+    .custom-box > *:nth-child(8) {
+      animation-delay: 0.43s;
+    }
+
+    .modal-box > *:nth-child(1) {
+      animation-delay: 0.12s;
+    }
+
+    .modal-box > *:nth-child(2) {
+      animation-delay: 0.16s;
+    }
+
+    .modal-box > *:nth-child(3) {
+      animation-delay: 0.21s;
+    }
+
+    .modal-box > *:nth-child(4) {
+      animation-delay: 0.26s;
+    }
+
+    .modal-box > *:nth-child(5) {
+      animation-delay: 0.30s;
+    }
+
+    .modal-box > *:nth-child(6) {
+      animation-delay: 0.34s;
+    }
+
+    .modal-box > *:nth-child(7) {
+      animation-delay: 0.39s;
+    }
+
+    .modal-box > *:nth-child(8) {
+      animation-delay: 0.43s;
+    }
+
+    .status-overlay.active > .status-option:nth-child(1) {
+      animation-delay: 0.12s;
+    }
+
+    .status-overlay.active > .status-option:nth-child(2) {
+      animation-delay: 0.16s;
+    }
+
+    .status-overlay.active > .status-option:nth-child(3) {
+      animation-delay: 0.21s;
+    }
+
+    .status-overlay.active > .status-option:nth-child(4) {
+      animation-delay: 0.26s;
+    }
+
+    .status-overlay.active > .status-option:nth-child(5) {
+      animation-delay: 0.30s;
+    }
+
+    .status-overlay.active > .status-option:nth-child(6) {
+      animation-delay: 0.34s;
+    }
+
+    .status-overlay.active > .status-option:nth-child(7) {
+      animation-delay: 0.39s;
+    }
+
+    .status-overlay.active > .status-option:nth-child(8) {
+      animation-delay: 0.43s;
     }
 
     .modal-box {
@@ -2083,6 +2321,39 @@
 
     .card:hover, .stats > div:hover {
       will-change: transform;
+    }
+  }
+
+  @media (hover: none) and (prefers-reduced-motion: no-preference) {
+    .card::after, .stats > div::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      border-radius: inherit;
+      background: linear-gradient(115deg, transparent 32%, rgba(255, 255, 255, 0.05) 42%, rgba(255, 255, 255, 0.2) 49%, rgba(255, 255, 255, 0.06) 56%, transparent 66%);
+      opacity: 0;
+      transform: translate3d(-110%, 0, 0);
+    }
+
+    .card:active::after, .stats > div:active::after {
+      animation: glareSweep 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+  }
+
+  @supports (animation-timeline: view()) {
+    @media (hover: none) and (prefers-reduced-motion: no-preference) {
+      .card::after, .stats > div::after {
+        animation: glareScroll linear both;
+        animation-timeline: view();
+        animation-range: entry 0% exit 100%;
+      }
+
+      .card:active::after, .stats > div:active::after {
+        animation: glareSweep 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+        animation-timeline: auto;
+        animation-range: normal;
+      }
     }
   }
 </style>
