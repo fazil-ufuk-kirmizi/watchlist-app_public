@@ -1701,6 +1701,351 @@
     .grid { grid-template-columns: repeat(auto-fill, minmax(115px, 1fr)); gap: 10px; }
     .card-media { height: 165px; }
   }
+
+  :root {
+    --primary: #4DA3FF;
+    --accent: #4DA3FF;
+    --primary-gradient: linear-gradient(180deg, #52A9FF 0%, #0A84FF 100%);
+    --text: #F5F5F7;
+    --text-dim: rgba(235, 235, 245, 0.62);
+    --border: rgba(255, 255, 255, 0.12);
+    --border-hover: rgba(255, 255, 255, 0.28);
+    --danger: #FF453A;
+    --danger-soft: rgba(255, 69, 58, 0.18);
+    --radius-sm: 14px;
+    --radius-md: 22px;
+    --radius-lg: 32px;
+    --glass-blur: blur(28px) saturate(185%);
+    --glass-edge: inset 0 1px 0 rgba(255, 255, 255, 0.30), inset 0 -1px 0 rgba(255, 255, 255, 0.05), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+    --shadow-sm: 0 4px 16px rgba(0, 0, 0, 0.25);
+    --shadow-md: 0 14px 40px rgba(0, 0, 0, 0.38);
+    --shadow-lg: 0 28px 80px rgba(0, 0, 0, 0.55);
+    --transition: all 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", Inter, "Segoe UI", sans-serif;
+    background-color: #04050a;
+    background-image: none;
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    inset: -20%;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(40% 35% at 18% 12%, rgba(10, 132, 255, 0.38), transparent 70%),
+      radial-gradient(38% 34% at 85% 22%, rgba(191, 90, 242, 0.30), transparent 70%),
+      radial-gradient(45% 40% at 70% 85%, rgba(48, 176, 199, 0.24), transparent 70%),
+      radial-gradient(35% 30% at 10% 80%, rgba(255, 69, 120, 0.16), transparent 70%);
+    filter: blur(30px);
+    animation: glassDrift 28s ease-in-out infinite alternate;
+  }
+
+  @keyframes glassDrift {
+    from { transform: translate3d(0, 0, 0) scale(1); }
+    to { transform: translate3d(-3%, 2%, 0) scale(1.08); }
+  }
+
+  ::selection { background: rgba(10, 132, 255, 0.35); color: #fff; }
+
+  header h1, .header-tag, .settings-pop h4, .auth-card h2, .control-block h2, .stats span, .stats strong,
+  .section-title, .section-title .count, .subsection-title, .card-title, .badge, .modal-header h3,
+  .add-custom-btn, .custom-title, .custom-field label {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", Inter, "Segoe UI", sans-serif;
+  }
+
+  .control-block h2, .stats span, .subsection-title, .detail-row h4, .custom-field label { letter-spacing: 0.8px; }
+
+  header {
+    margin: 12px auto;
+    top: 12px;
+    width: calc(100% - 24px);
+    max-width: 1400px;
+    border-radius: 30px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.04));
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-md), var(--glass-edge);
+  }
+
+  header h1 {
+    background: linear-gradient(180deg, #fff 25%, rgba(255, 255, 255, 0.62));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -0.6px;
+  }
+
+  .header-tag {
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  }
+
+  .stats > div, .card {
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.04) 60%);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm), var(--glass-edge);
+  }
+
+  .stats > div:hover, .card:hover {
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.17), rgba(255, 255, 255, 0.06) 60%);
+    border-color: var(--border-hover);
+    box-shadow: var(--shadow-md), var(--glass-edge);
+  }
+
+  .card:hover { transform: translateY(-6px) scale(1.02); }
+
+  .card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    pointer-events: none;
+    border-radius: inherit;
+    background: radial-gradient(120% 60% at 0% 0%, rgba(255, 255, 255, 0.16), transparent 55%);
+    mix-blend-mode: screen;
+    opacity: 0.7;
+    transition: opacity 0.4s ease;
+  }
+
+  .card:hover::after { opacity: 1; }
+
+  .card-media {
+    margin: 8px 8px 0;
+    border-radius: calc(var(--radius-md) - 8px);
+    background: rgba(0, 0, 0, 0.28);
+  }
+
+  .no-poster { background: rgba(0, 0, 0, 0.28); }
+
+  .skeleton {
+    background: linear-gradient(100deg, rgba(255, 255, 255, 0.04) 30%, rgba(255, 255, 255, 0.11) 50%, rgba(255, 255, 255, 0.04) 70%);
+    background-size: 300% 100%;
+  }
+
+  .settings-pop, .auth-card, .confirm-box, .custom-box, .toast, .modal-box, .search-results {
+    background: linear-gradient(160deg, rgba(62, 66, 88, 0.56), rgba(26, 28, 40, 0.64));
+    backdrop-filter: blur(40px) saturate(190%);
+    -webkit-backdrop-filter: blur(40px) saturate(190%);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    box-shadow: var(--shadow-lg), var(--glass-edge);
+  }
+
+  .settings-pop, .search-results { background: rgba(30, 32, 46, 0.88); }
+
+  .toast {
+    border-left: 3px solid var(--primary);
+    border-radius: var(--radius-md);
+  }
+
+  .modal-overlay, .confirm-overlay {
+    background: rgba(0, 0, 0, 0.42);
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+  }
+
+  .auth-overlay {
+    background: rgba(4, 5, 10, 0.8);
+    backdrop-filter: blur(40px) saturate(160%);
+    -webkit-backdrop-filter: blur(40px) saturate(160%);
+  }
+
+  .modal-box {
+    margin: 12px;
+    height: calc(100vh - 24px);
+    height: calc(100dvh - 24px);
+    border-radius: var(--radius-lg);
+  }
+
+  .modal-header { background: transparent; }
+
+  .status-overlay {
+    background: rgba(22, 24, 34, 0.55);
+    backdrop-filter: blur(26px) saturate(180%);
+    -webkit-backdrop-filter: blur(26px) saturate(180%);
+  }
+
+  input[type="text"], input[type="email"], input[type="password"], input[type="date"], select, .custom-field textarea {
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.35), 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+
+  input[type="email"], input[type="password"] {
+    padding: 14px 16px;
+    font-size: 14px;
+    font-family: inherit;
+    transition: var(--transition);
+  }
+
+  input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focus, input[type="date"]:focus, select:focus, .custom-field textarea:focus {
+    outline: none;
+    border-color: rgba(77, 163, 255, 0.75);
+    background: rgba(255, 255, 255, 0.10);
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3), 0 0 0 4px rgba(10, 132, 255, 0.25);
+  }
+
+  select option { background: #1d1f2b; color: #F5F5F7; }
+
+  button {
+    background: var(--primary-gradient);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: 999px;
+    font-weight: 600;
+    box-shadow: 0 6px 18px rgba(10, 132, 255, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.45), inset 0 -1px 0 rgba(0, 0, 0, 0.12);
+  }
+
+  button:hover {
+    transform: translateY(-1px) scale(1.02);
+    box-shadow: 0 10px 26px rgba(10, 132, 255, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  }
+
+  button:active { transform: scale(0.97); }
+
+  input[type="file"]::file-selector-button { color: #fff; border-radius: 999px; }
+
+  button.icon-btn, .modal-close, .confirm-actions button.btn-cancel, .status-btn, .status-option, .season-tab {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    color: var(--text);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 2px 10px rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(16px) saturate(170%);
+    -webkit-backdrop-filter: blur(16px) saturate(170%);
+  }
+
+  button.icon-btn, .delete-btn, .edit-btn, .modal-close { border-radius: 50%; }
+
+  .confirm-actions button.btn-cancel:hover, .status-btn:hover, .status-option:hover, .season-tab:hover, .modal-close:hover {
+    background: rgba(255, 255, 255, 0.14);
+    border-color: rgba(255, 255, 255, 0.3);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 6px 18px rgba(0, 0, 0, 0.25);
+  }
+
+  button.icon-btn:hover, .edit-btn:hover {
+    background: var(--primary-gradient);
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.3);
+    box-shadow: 0 8px 22px rgba(10, 132, 255, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  }
+
+  .delete-btn, .edit-btn {
+    background: rgba(20, 22, 32, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  }
+
+  .delete-btn:hover { background: var(--danger); box-shadow: 0 6px 16px rgba(255, 69, 58, 0.4); }
+
+  .lang-switch { background: rgba(0, 0, 0, 0.28); border-radius: 999px; box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4); }
+  .lang-btn { border-radius: 999px; box-shadow: none; }
+
+  .lang-btn.active, .season-tab.active, .status-option.active {
+    background: var(--primary-gradient);
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.3);
+    box-shadow: 0 4px 14px rgba(10, 132, 255, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  }
+
+  .status-btn.watched {
+    background: rgba(10, 132, 255, 0.18);
+    border-color: rgba(77, 163, 255, 0.35);
+    color: var(--primary);
+  }
+
+  .season-mark-toggle { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.14); }
+
+  .section-title .count, .badge {
+    background: rgba(10, 132, 255, 0.16);
+    border: 1px solid rgba(77, 163, 255, 0.30);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  }
+
+  .subsection-title .count { background: rgba(255, 255, 255, 0.07); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15); }
+
+  .add-custom-btn {
+    background: rgba(10, 132, 255, 0.16);
+    border: 1px solid rgba(77, 163, 255, 0.35);
+    color: var(--primary);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  }
+
+  .add-custom-btn:hover { background: var(--primary-gradient); color: #fff; border-color: rgba(255, 255, 255, 0.3); }
+
+  .next-ep-btn {
+    background: rgba(10, 132, 255, 0.10);
+    border: 1px solid rgba(77, 163, 255, 0.40);
+    box-shadow: none;
+  }
+
+  .next-ep-btn:hover:not(:disabled) { background: rgba(10, 132, 255, 0.2); border-color: var(--primary); }
+
+  .my-rating-btn { background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.12); box-shadow: none; }
+  .my-rating-btn.active { background: rgba(10, 132, 255, 0.22); color: var(--primary); border-color: var(--primary); }
+
+  .episode-row.watched, .episodes-footer { background: rgba(10, 132, 255, 0.10); }
+  .file-drop:hover { background: rgba(10, 132, 255, 0.10); }
+
+  .ep-check-input:checked + .ep-checkmark {
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(10, 132, 255, 0.45);
+  }
+
+  .progress-bar {
+    height: 6px;
+    border-radius: 99px;
+    background: rgba(255, 255, 255, 0.10);
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.35);
+  }
+
+  .progress-bar-fill { border-radius: 99px; box-shadow: 0 0 12px rgba(10, 132, 255, 0.6); }
+
+  .empty {
+    border: 1px dashed rgba(255, 255, 255, 0.18);
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  .settings-pop::-webkit-scrollbar-thumb:hover { background: rgba(77, 163, 255, 0.5); }
+
+  .auth-or { display: flex; align-items: center; gap: 12px; margin: 18px 0 14px; color: var(--text-dim); font-size: 12px; }
+  .auth-or::before, .auth-or::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+
+  .guest-btn {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 2px 10px rgba(0, 0, 0, 0.2);
+  }
+
+  .guest-btn:hover { background: rgba(255, 255, 255, 0.14); border-color: rgba(255, 255, 255, 0.3); }
+
+  .guest-note { display: none; margin: 10px 0 0; font-size: 12px; color: var(--text-dim); line-height: 1.6; }
+  body.guest-mode .guest-note { display: block; }
+  body.guest-mode .account-only { display: none; }
+
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    header, .stats > div, .card, .settings-pop, .auth-card, .confirm-box, .custom-box, .toast, .modal-box, .search-results {
+      background: rgba(28, 30, 42, 0.94);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    body::before { animation: none; }
+  }
+
+  @media (max-width: 768px) {
+    header { top: 0; margin: 8px auto; width: calc(100% - 16px); border-radius: 24px; }
+    .modal-box { margin: 8px; height: calc(100vh - 16px); height: calc(100dvh - 16px); }
+  }
 </style>
 </head>
 <body>
@@ -1721,6 +2066,8 @@
       <button class="settings-save" id="authSubmitBtn">Giriş Yap</button>
     </div>
     <p class="auth-switch" id="authSwitchText">Hesabın yok mu? <a id="authSwitchLink">Kayıt Ol</a></p>
+    <div class="auth-or"><span>veya</span></div>
+    <button type="button" class="guest-btn" id="authGuestBtn">Misafir Olarak Devam Et</button>
   </div>
 </div>
 
@@ -1735,12 +2082,13 @@
       </button>
       <div class="settings-pop" id="settingsPop">
         <h4 id="accountSectionTitle">Hesap</h4>
-        <div class="account-row">
+        <div class="account-row account-only">
           <span id="accountEmailLabel">Giriş yapan: <strong id="accountEmailValue"></strong></span>
         </div>
         <button class="settings-save" id="logoutBtn">Çıkış Yap</button>
-        <button class="settings-save" id="cloudSyncNow" style="margin-top:8px;">Şimdi Yedekle</button>
-        <p id="cloudSyncStatus" style="margin:10px 0 0 0; font-size:12px; color:var(--text-dim);"></p>
+        <p class="guest-note">Misafir modunda liste yalnızca bu cihazda tutulur. Yedekleme ve hesap özellikleri kapalıdır.</p>
+        <button class="settings-save account-only" id="cloudSyncNow" style="margin-top:8px;">Şimdi Yedekle</button>
+        <p class="account-only" id="cloudSyncStatus" style="margin:10px 0 0 0; font-size:12px; color:var(--text-dim);"></p>
         <div class="settings-divider"></div>
         <h4 id="langSectionTitle">Language</h4>
         <div class="lang-switch">
@@ -1767,6 +2115,7 @@
         <p id="exportSectionDesc">Diziler Excel dosyası olarak iner. Filmler, Letterboxd içe aktarma formatında iki ayrı CSV olarak iner: izlenenler ve watchlist.</p>
         <button class="settings-save" id="exportSeriesBtn">Dizileri Dışa Aktar (Excel)</button>
         <button class="settings-save" id="exportMoviesBtn" style="margin-top:8px;">Filmleri Dışa Aktar (Letterboxd CSV)</button>
+        <div class="account-only">
         <div class="settings-divider"></div>
         <h4 id="ghSectionTitle">GitHub Yedekleme</h4>
         <p id="ghSectionDesc">Her değişiklikte listen otomatik olarak GitHub reponda bir Excel dosyasına yedeklenir. Bilgiler sadece bu tarayıcıda saklanır.</p>
@@ -1779,6 +2128,7 @@
         <button class="settings-save" id="ghSettingsSave">Kaydet</button>
         <button class="settings-save" id="ghSyncNow" style="margin-top:8px;">Şimdi Yedekle</button>
         <p id="ghStatus" style="margin:10px 0 0 0; font-size:12px; color:var(--text-dim);"></p>
+        </div>
       </div>
     </div>
   </div>
@@ -1897,6 +2247,9 @@ let cloudSyncTimer = null;
 let applyingRemoteUpdate = false;
 let pendingLocalWrite = false;
 let authMode = "login";
+let guestMode = false;
+let guestApiKey = "";
+const STORAGE_GUEST_ITEMS = "watchlist.guest.items.v1";
 
 const STRINGS = {
   tr: {
@@ -2416,6 +2769,10 @@ seedUpdatedAtBaseline();
 function saveItems() {
   ensureItemIds();
   stampUpdatedItems();
+  if (guestMode) {
+    try { localStorage.setItem(STORAGE_GUEST_ITEMS, JSON.stringify(items)); } catch (err) {}
+    return;
+  }
   try {
     localStorage.setItem(STORAGE_ITEMS, JSON.stringify(items));
     if (!applyingRemoteUpdate) localStorage.setItem(STORAGE_UNSYNCED, "1");
@@ -2867,13 +3224,46 @@ if (firebaseAvailable) {
   });
 
   document.getElementById("logoutBtn").addEventListener("click", () => {
+    if (guestMode) {
+      location.reload();
+      return;
+    }
     auth.signOut();
+  });
+
+  function loadGuestItems() {
+    try {
+      const raw = localStorage.getItem(STORAGE_GUEST_ITEMS);
+      const parsed = raw ? JSON.parse(raw) : [];
+      parsed.forEach(i => { if (!i.status) i.status = "watched"; });
+      return dedupeItems(parsed);
+    } catch (err) {
+      return [];
+    }
+  }
+
+  document.getElementById("authGuestBtn").addEventListener("click", () => {
+    guestMode = true;
+    guestApiKey = "";
+    document.body.classList.add("guest-mode");
+    items = loadGuestItems();
+    seedUpdatedAtBaseline();
+    apiKeyInput.value = "";
+    document.getElementById("accountSectionTitle").textContent = "Misafir";
+    document.getElementById("logoutBtn").textContent = "Misafir Modundan Çık";
+    document.getElementById("authOverlay").style.display = "none";
+    resetOmdbState();
+    render(document.getElementById("liveSearch").value);
   });
 
   setAuthMode("login");
 
   auth.onAuthStateChanged((user) => {
     const overlay = document.getElementById("authOverlay");
+    if (user && guestMode) {
+      location.reload();
+      return;
+    }
     if (user) {
       overlay.style.display = "none";
       document.getElementById("accountEmailValue").textContent = user.email || "";
@@ -2915,6 +3305,7 @@ function getGithubConfig() {
 }
 
 function isGithubConfigured() {
+  if (guestMode) return false;
   const cfg = getGithubConfig();
   return !!(cfg.token && cfg.repo && cfg.path);
 }
@@ -3094,6 +3485,7 @@ function saveCache() {
 }
 
 function getApiKeys() {
+  if (guestMode) return guestApiKey ? [guestApiKey] : [];
   const userKey = (localStorage.getItem(STORAGE_APIKEY) || "").trim();
   return userKey ? [userKey] : [];
 }
@@ -3196,7 +3588,9 @@ async function syncApiKeyFromCloud() {
 
 document.getElementById("apiKeySave").addEventListener("click", () => {
   const key = apiKeyInput.value.trim();
-  if (key) {
+  if (guestMode) {
+    guestApiKey = key;
+  } else if (key) {
     localStorage.setItem(STORAGE_APIKEY, key);
   } else {
     localStorage.removeItem(STORAGE_APIKEY);
