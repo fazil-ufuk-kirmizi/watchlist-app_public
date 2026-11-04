@@ -2136,6 +2136,8 @@
 
   .card::after { display: none; }
 
+  .grid-sentinel { flex: 0 0 600px; width: 600px; max-width: 100%; height: 1px; grid-column: 1 / -1; pointer-events: none; }
+
   @media (max-width: 768px) {
     .grid.row-view .card { contain-intrinsic-size: auto 130px auto 370px; }
   }
@@ -3848,7 +3850,13 @@ function createNoPosterNode() {
   return div;
 }
 
+const CARD_BATCH = 30;
+
 function fillGrid(grid, list, emptyText) {
+  if (grid._moreObserver) {
+    grid._moreObserver.disconnect();
+    grid._moreObserver = null;
+  }
   grid.innerHTML = "";
 
   if (list.length === 0) {
@@ -3856,7 +3864,43 @@ function fillGrid(grid, list, emptyText) {
     return;
   }
 
-  list.forEach(item => {
+  let shown = 0;
+  const sentinel = document.createElement("div");
+  sentinel.className = "grid-sentinel";
+  let observer = null;
+
+  const appendBatch = () => {
+    const end = Math.min(shown + CARD_BATCH, list.length);
+    const frag = document.createDocumentFragment();
+    for (; shown < end; shown++) frag.appendChild(buildCard(list[shown]));
+    if (sentinel.parentNode) grid.insertBefore(frag, sentinel);
+    else grid.appendChild(frag);
+    if (shown >= list.length) {
+      if (observer) observer.disconnect();
+      grid._moreObserver = null;
+      sentinel.remove();
+    } else if (observer) {
+      observer.unobserve(sentinel);
+      observer.observe(sentinel);
+    }
+  };
+
+  appendBatch();
+  if (shown < list.length) {
+    grid.appendChild(sentinel);
+    if ("IntersectionObserver" in window) {
+      observer = new IntersectionObserver((entries) => {
+        if (entries.some(e => e.isIntersecting)) appendBatch();
+      }, { rootMargin: "0px 0px 1200px 0px" });
+      grid._moreObserver = observer;
+      observer.observe(sentinel);
+    } else {
+      while (shown < list.length) appendBatch();
+    }
+  }
+}
+
+function buildCard(item) {
     const card = document.createElement("div");
     card.className = "card";
     const watchedCount = countWatchedEpisodes(item);
@@ -3947,8 +3991,7 @@ function fillGrid(grid, list, emptyText) {
       }
       openDetailsModal(item);
     });
-    grid.appendChild(card);
-  });
+    return card;
 }
 
 function dateInputToIso(value) {
