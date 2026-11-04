@@ -2128,6 +2128,17 @@
   }
 
   .card:hover { box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25); }
+
+  .grid.row-view .card {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 190px auto 460px;
+  }
+
+  .card::after { display: none; }
+
+  @media (max-width: 768px) {
+    .grid.row-view .card { contain-intrinsic-size: auto 130px auto 370px; }
+  }
 </style>
 </head>
 <body>
