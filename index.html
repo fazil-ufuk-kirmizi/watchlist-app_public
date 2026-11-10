@@ -70,6 +70,17 @@
     flex: 1;
   }
 
+  .app-version {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-dim);
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    cursor: help;
+    white-space: nowrap;
+  }
+
   button.icon-btn {
     width: 44px;
     height: 44px;
@@ -2423,6 +2434,7 @@
   <div class="header-top">
     <h1 id="appTitle">My Watch List</h1>
     <span class="header-tag" id="appTag">Personal Archive</span>
+    <span class="app-version" id="appVersion"></span>
     <div class="header-spacer"></div>
     <div class="settings-wrap">
       <button class="icon-btn" id="settingsBtn" title="OMDb API key ayarları" aria-label="Ayarlar">
@@ -2549,6 +2561,22 @@
 
 <script>
 const API_URL = "https://www.omdbapi.com/";
+
+// VERSION NOTE: bump APP_VERSION and add an entry to the top of APP_CHANGELOG on every update.
+// v1.1.1 - Added this note. v1.1.0 - Duplicate prevention for imported titles + version badge.
+const APP_VERSION = "1.1.1";
+const APP_CHANGELOG = [
+  { version: "1.1.1", notes: "Added a code comment explaining the versioning rule." },
+  { version: "1.1.0", notes: "Duplicate prevention: imdbID is now saved for movies too, search results check title/type/year when imdbID is missing, adding an already listed title is blocked. Version badge added." },
+  { version: "1.0.0", notes: "Baseline version before version tracking." }
+];
+
+function renderAppVersion() {
+  const el = document.getElementById("appVersion");
+  if (!el) return;
+  el.textContent = "v" + APP_VERSION;
+  el.title = APP_CHANGELOG.map(entry => "v" + entry.version + ": " + entry.notes).join("\n");
+}
 
 const STORAGE_ITEMS = "watchlist.items.v1";
 const STORAGE_UNSYNCED = "watchlist.unsynced.v1";
@@ -6056,6 +6084,7 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && customModalEl.classList.contains("active")) closeCustomModal();
 });
 
+renderAppVersion();
 applyLanguage();
 if (items.length > 0 && !firebaseAvailable) {
   enrichItemsWithOMDb();
