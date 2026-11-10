@@ -2564,8 +2564,9 @@ const API_URL = "https://www.omdbapi.com/";
 
 // VERSION NOTE: bump APP_VERSION and add an entry to the top of APP_CHANGELOG on every update.
 // v1.1.1 - Added this note. v1.1.0 - Duplicate prevention for imported titles + version badge.
-const APP_VERSION = "1.1.1";
+const APP_VERSION = "1.2.0";
 const APP_CHANGELOG = [
+  { version: "1.2.0", notes: "Automatic new-version check: on open and when returning to the app, the page fetches itself without cache and reloads with a cache-busting URL if a newer version exists." },
   { version: "1.1.1", notes: "Added a code comment explaining the versioning rule." },
   { version: "1.1.0", notes: "Duplicate prevention: imdbID is now saved for movies too, search results check title/type/year when imdbID is missing, adding an already listed title is blocked. Version badge added." },
   { version: "1.0.0", notes: "Baseline version before version tracking." }
@@ -2577,6 +2578,33 @@ function renderAppVersion() {
   el.textContent = "v" + APP_VERSION;
   el.title = APP_CHANGELOG.map(entry => "v" + entry.version + ": " + entry.notes).join("\n");
 }
+
+const VERSION_RELOAD_KEY = "appVersionReloadTarget";
+
+async function checkForNewVersion() {
+  if (!navigator.onLine) return;
+  try {
+    const response = await fetch(location.origin + location.pathname + "?_=" + Date.now(), { cache: "no-store" });
+    if (!response.ok) return;
+    const html = await response.text();
+    const match = html.match(/const APP_VERSION = "([^"]+)"/);
+    if (!match || match[1] === APP_VERSION) return;
+    let attempted = null;
+    try { attempted = sessionStorage.getItem(VERSION_RELOAD_KEY); } catch (e) {}
+    if (attempted === match[1]) return;
+    try { sessionStorage.setItem(VERSION_RELOAD_KEY, match[1]); } catch (e) {}
+    const next = new URL(location.href);
+    next.searchParams.set("_v", match[1]);
+    location.replace(next.toString());
+  } catch (e) {}
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") checkForNewVersion();
+});
+window.addEventListener("pageshow", (e) => {
+  if (e.persisted) checkForNewVersion();
+});
 
 const STORAGE_ITEMS = "watchlist.items.v1";
 const STORAGE_UNSYNCED = "watchlist.unsynced.v1";
@@ -6085,6 +6113,7 @@ document.addEventListener("keydown", (e) => {
 });
 
 renderAppVersion();
+checkForNewVersion();
 applyLanguage();
 if (items.length > 0 && !firebaseAvailable) {
   enrichItemsWithOMDb();
