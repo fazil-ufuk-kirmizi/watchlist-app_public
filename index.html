@@ -5002,7 +5002,7 @@ async function enrichItemsWithOMDbRun() {
   if (isOMDbInCooldown()) return;
   for (const item of items) {
     if (omdbLimitReached) return;
-    if (item.poster || item.notFound || item.custom) continue;
+    if (item.imdbID || item.notFound || item.custom) continue;
     try {
       const data = await fetchOMDbData(item.title, item.type);
       if (omdbLimitReached) return;
@@ -5015,8 +5015,8 @@ async function enrichItemsWithOMDbRun() {
         item.director = data.Director !== "N/A" ? data.Director : "";
         item.actors = data.Actors !== "N/A" ? data.Actors : "";
         item.runtime = parseRuntime(data.Runtime);
+        item.imdbID = data.imdbID;
         if (item.type === "series") {
-          item.imdbID = data.imdbID;
           item.totalSeasons = parseInt(data.totalSeasons) || 1;
           if (!item.seasonCache) item.seasonCache = {};
           if (!item.watchedEpisodes) item.watchedEpisodes = {};
@@ -5116,12 +5116,29 @@ async function searchOnline(query) {
   }
 }
 
+function searchTitleKey(text) {
+  return normalizeTurkish(String(text || "")).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function findExistingForResult(result) {
+  const resultType = result.Type === "movie" ? "movie" : "series";
+  const resultTitle = searchTitleKey(result.Title);
+  const resultYear = String(result.Year || "").slice(0, 4);
+  return items.find(i => {
+    if (i.imdbID && result.imdbID) return i.imdbID === result.imdbID;
+    if (i.type !== resultType) return false;
+    if (searchTitleKey(i.title) !== resultTitle) return false;
+    const itemYear = String(i.year || "").slice(0, 4);
+    return !itemYear || !resultYear || itemYear === resultYear;
+  });
+}
+
 function renderSearchResults(results) {
   const resultsBox = document.getElementById("searchResults");
   resultsBox.innerHTML = "";
 
   results.forEach(r => {
-    const alreadyAdded = items.some(i => i.imdbID === r.imdbID);
+    const alreadyAdded = !!findExistingForResult(r);
     const row = document.createElement("div");
     row.className = "result-row";
     row.innerHTML = `
@@ -5132,7 +5149,13 @@ function renderSearchResults(results) {
         ${alreadyAdded ? `<div class="result-added">${t('alreadyAdded')}</div>` : ""}
       </div>
     `;
-    row.addEventListener("click", () => selectSearchResult(r.imdbID, r.Title, r.Year));
+    row.addEventListener("click", () => {
+      if (alreadyAdded) {
+        toast(t("customDuplicate")(r.Title), true);
+        return;
+      }
+      selectSearchResult(r.imdbID, r.Title, r.Year);
+    });
     resultsBox.appendChild(row);
   });
 
@@ -5152,6 +5175,12 @@ async function selectSearchResult(imdbID, title, year) {
 
     if (data.Response === "False") {
       toast(data.Error || t("couldNotLoadDetails"), true);
+      return;
+    }
+
+    const duplicate = findExistingForResult({ imdbID: data.imdbID, Title: data.Title, Year: data.Year, Type: data.Type });
+    if (duplicate) {
+      toast(t("customDuplicate")(data.Title), true);
       return;
     }
 
